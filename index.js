@@ -35,8 +35,6 @@ bot.onText(/^\/register$/, async (message) => {
                 id: message.from.id
             });
 
-        console.log(user);
-
         if (user) {
             await bot.sendMessage(
                 message.chat.id,
