@@ -1,6 +1,7 @@
 import { MongoClient, ServerApiVersion } from "mongodb";
 import TelegramBot from "node-telegram-bot-api";
 import dotenv from "dotenv";
+import scheduler from "node-schedule";
 
 dotenv.config();
 
@@ -196,4 +197,69 @@ bot.onText(/^\/ping/, async (message) => {
     if (!isMessageFromPerson || !isKnownChat) return;
 
     bot.sendMessage(message.chat.id, "Pong!");
+});
+
+scheduler.scheduleJob("00 12 * * *", async () => {
+    try {
+        await client.connect();
+
+        const todaysLucky = await client
+            .db(MONGODB_DATABASE)
+            .collection("results")
+            .findOne({
+                date: new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" })
+            });
+
+        if (todaysLucky) {
+            await bot.sendMessage(
+                message.chat.id,
+                `The luck is over! [${todaysLucky.winner.name}](tg://user?id=${todaysLucky.winner.id}) got it all!`,
+                {
+                    parse_mode: "Markdown"
+                }
+            );
+            return;
+        }
+
+        const users = await client
+            .db(MONGODB_DATABASE)
+            .collection("participants")
+            .find({})
+            .toArray();
+
+        if (users.length === 0) {
+            await bot.sendMessage(message.chat.id, "No participants yet!", {
+                parse_mode: "Markdown"
+            });
+            return;
+        }
+
+        const randomUser = users[Math.floor(Math.random() * users.length)];
+
+        await client
+            .db(MONGODB_DATABASE)
+            .collection("participants")
+            .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
+
+        await client
+            .db(MONGODB_DATABASE)
+            .collection("results")
+            .insertOne({
+                date: new Date().toLocaleDateString("uk-UA"),
+                winner: randomUser
+            });
+
+        await bot.sendMessage(
+            message.chat.id,
+            `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today!`,
+            {
+                parse_mode: "Markdown"
+            }
+        );
+    } catch (error) {
+        await bot.sendMessage(message.chat.id, "Something went wrong...");
+        await bot.sendMessage(message.chat.id, String(error));
+    } finally {
+        await client.close();
+    }
 });
