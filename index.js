@@ -63,7 +63,9 @@ bot.onText(/^\/register/, async (message) => {
 
         await bot.sendMessage(
             message.chat.id,
-            `[${message.from.username || message.from.first_name}](tg://user?id=${message.from.id}) successfully registered!`,
+            `[${message.from.username || message.from.first_name}](tg://user?id=${
+                message.from.id
+            }) successfully registered!`,
             {
                 parse_mode: "Markdown"
             }
