@@ -109,6 +109,13 @@ bot.onText(/^\/lucky/, async (message) => {
             .find({})
             .toArray();
 
+        if (users.length === 0) {
+            await bot.sendMessage(message.chat.id, "No participants yet!", {
+                parse_mode: "Markdown"
+            });
+            return;
+        }
+
         const randomUser = users[Math.floor(Math.random() * users.length)];
 
         await client
@@ -154,6 +161,13 @@ bot.onText(/^\/top/, async (message) => {
             .find({})
             .sort("points", "desc")
             .toArray();
+
+        if (users.length === 0) {
+            await bot.sendMessage(message.chat.id, "No participants yet!", {
+                parse_mode: "Markdown"
+            });
+            return;
+        }
 
         const messages = ["*Ranking:*"].concat(
             users.map(
