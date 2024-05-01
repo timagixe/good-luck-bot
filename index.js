@@ -130,7 +130,7 @@ bot.onText(/^\/lucky/, async (message) => {
             .db(MONGODB_DATABASE)
             .collection("results")
             .insertOne({
-                date: new Date().toLocaleDateString("uk-UA"),
+                date: new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" }),
                 winner: randomUser
             });
 
@@ -248,7 +248,7 @@ scheduler.scheduleJob({
             .db(MONGODB_DATABASE)
             .collection("results")
             .insertOne({
-                date: new Date().toLocaleDateString("uk-UA"),
+                date: new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" }),
                 winner: randomUser
             });
 
