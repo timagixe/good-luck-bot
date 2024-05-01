@@ -28,12 +28,9 @@ bot.onText(/^\/register$/, async (message) => {
     try {
         await client.connect();
 
-        const user = await client
-            .db(MONGODB_DATABASE)
-            .collection(message.chat.id.toString())
-            .findOne({
-                id: message.from.id
-            });
+        const user = await client.db(MONGODB_DATABASE).collection("participants").findOne({
+            id: message.from.id
+        });
 
         if (user) {
             await bot.sendMessage(
@@ -48,7 +45,7 @@ bot.onText(/^\/register$/, async (message) => {
 
         await client
             .db(MONGODB_DATABASE)
-            .collection(message.chat.id.toString())
+            .collection("participants")
             .insertOne({
                 id: message.from.id,
                 points: 0,
@@ -139,4 +136,3 @@ bot.onText(/^\/ping$/, async (message) => {
 
     bot.sendMessage(message.chat.id, "Pong!");
 });
-
