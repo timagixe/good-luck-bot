@@ -21,9 +21,10 @@ const client = new MongoClient(
 );
 
 bot.onText(/^\/register$/, async (message) => {
+    const isKnownChat = message.chat.id in CHATS;
     const isMessageFromPerson = message.from && !message.from.is_bot;
 
-    if (!isMessageFromPerson) return;
+    if (!isMessageFromPerson || !isKnownChat) return;
 
     try {
         await client.connect();
@@ -68,9 +69,10 @@ bot.onText(/^\/register$/, async (message) => {
 });
 
 bot.onText(/^\/lucky$/, async (message) => {
+    const isKnownChat = message.chat.id in CHATS;
     const isMessageFromPerson = message.from && !message.from.is_bot;
 
-    if (!isMessageFromPerson) return;
+    if (!isMessageFromPerson || !isKnownChat) return;
 
     try {
         await client.connect();
@@ -79,7 +81,7 @@ bot.onText(/^\/lucky$/, async (message) => {
             .db(MONGODB_DATABASE)
             .collection("results")
             .findOne({
-                date: new Date().toLocaleDateString("uk-UA")
+                date: new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" })
             });
 
         if (todaysLucky) {
@@ -130,9 +132,10 @@ bot.onText(/^\/lucky$/, async (message) => {
 });
 
 bot.onText(/^\/top$/, async (message) => {
+    const isKnownChat = message.chat.id in CHATS;
     const isMessageFromPerson = message.from && !message.from.is_bot;
 
-    if (!isMessageFromPerson) return;
+    if (!isMessageFromPerson || !isKnownChat) return;
 
     try {
         await client.connect();
@@ -163,9 +166,10 @@ bot.onText(/^\/top$/, async (message) => {
 });
 
 bot.onText(/^\/ping$/, async (message) => {
+    const isKnownChat = message.chat.id in CHATS;
     const isMessageFromPerson = message.from && !message.from.is_bot;
 
-    if (!isMessageFromPerson) return;
+    if (!isMessageFromPerson || !isKnownChat) return;
 
     bot.sendMessage(message.chat.id, "Pong!");
 });
