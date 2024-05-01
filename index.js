@@ -144,19 +144,15 @@ bot.onText(/^\/top$/, async (message) => {
             .sort("points", "desc")
             .toArray();
 
-        const messages = ["Luckiest participants:"].concat(
+        const messages = ["*Ranking:*"].concat(
             users.map(
                 (user, index) =>
-                    `${index + 1}\\. [${user.name}](tg://user?id=${user.id}) \\- ${
-                        user.points
-                    } lucky points`
+                    `${index + 1}. [${user.name}](tg://user?id=${user.id}) - ${user.points} points`
             )
         );
 
-        console.log(`||${messages.join("\n")}||`);
-
-        await bot.sendMessage(message.chat.id, `||${messages.join("\n")}||`, {
-            parse_mode: "MarkdownV2"
+        await bot.sendMessage(message.chat.id, `${messages.join("\n")}`, {
+            parse_mode: "Markdown"
         });
     } catch (error) {
         await bot.sendMessage(message.chat.id, "Something went wrong...");
