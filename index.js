@@ -20,7 +20,7 @@ const client = new MongoClient(
     }
 );
 
-bot.onText(/^\/register$/, async (message) => {
+bot.onText(/^\/register/, async (message) => {
     const isKnownChat = message.chat.id in CHATS;
     const isMessageFromPerson = message.from && !message.from.is_bot;
 
@@ -68,7 +68,7 @@ bot.onText(/^\/register$/, async (message) => {
     }
 });
 
-bot.onText(/^\/lucky$/, async (message) => {
+bot.onText(/^\/lucky/, async (message) => {
     const isKnownChat = message.chat.id in CHATS;
     const isMessageFromPerson = message.from && !message.from.is_bot;
 
@@ -131,7 +131,7 @@ bot.onText(/^\/lucky$/, async (message) => {
     }
 });
 
-bot.onText(/^\/top$/, async (message) => {
+bot.onText(/^\/top/, async (message) => {
     const isKnownChat = message.chat.id in CHATS;
     const isMessageFromPerson = message.from && !message.from.is_bot;
 
@@ -165,7 +165,7 @@ bot.onText(/^\/top$/, async (message) => {
     }
 });
 
-bot.onText(/^\/ping$/, async (message) => {
+bot.onText(/^\/ping/, async (message) => {
     const isKnownChat = message.chat.id in CHATS;
     const isMessageFromPerson = message.from && !message.from.is_bot;
 
