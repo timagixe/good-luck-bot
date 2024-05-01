@@ -88,7 +88,7 @@ bot.onText(/^\/lucky$/, async (message) => {
         if (todaysLucky) {
             await bot.sendMessage(
                 message.chat.id,
-                `Luck is on [${todaysLucky.name}](tg://user?id=${todaysLucky.id})'s side today!`,
+                `The luck is over! [${todaysLucky.winner.name}](tg://user?id=${todaysLucky.winner.id}) got it all!`,
                 {
                     parse_mode: "Markdown"
                 }
