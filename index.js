@@ -4,8 +4,16 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const { TELEGRAM_BOT_TOKEN, MONGODB_USER, MONGODB_PASSWORD, MONGODB_CLUSTER, MONGODB_DATABASE } =
-    process.env;
+const {
+    TELEGRAM_BOT_TOKEN,
+    MONGODB_USER,
+    MONGODB_PASSWORD,
+    MONGODB_CLUSTER,
+    MONGODB_DATABASE,
+    KNOWN_CHATS
+} = process.env;
+
+const CHATS = Object.fromEntries(KNOWN_CHATS.split(";").map((entry) => entry.split(":")));
 
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
