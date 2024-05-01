@@ -70,6 +70,68 @@ bot.onText(/^\/register$/, async (message) => {
     }
 });
 
+bot.onText(/^\/lucky$/, async (message) => {
+    const isMessageFromPerson = message.from && !message.from.is_bot;
+
+    if (!isMessageFromPerson) return;
+
+    try {
+        await client.connect();
+
+        const todaysLucky = await client
+            .db(MONGODB_DATABASE)
+            .collection("results")
+            .findOne({
+                date: new Date().toLocaleDateString("uk-UA")
+            });
+
+        if (todaysLucky) {
+            await bot.sendMessage(
+                message.chat.id,
+                `Luck is on [${todaysLucky.name}](tg://user?id=${todaysLucky.id})'s side today!`,
+                {
+                    parse_mode: "Markdown"
+                }
+            );
+            return;
+        }
+
+        const users = await client
+            .db(MONGODB_DATABASE)
+            .collection("participants")
+            .find({})
+            .toArray();
+
+        const randomUser = users[Math.floor(Math.random() * users.length)];
+
+        await client
+            .db(MONGODB_DATABASE)
+            .collection("participants")
+            .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
+
+        await client
+            .db(MONGODB_DATABASE)
+            .collection("results")
+            .insertOne({
+                date: new Date().toLocaleDateString("uk-UA"),
+                winner: randomUser
+            });
+
+        await bot.sendMessage(
+            message.chat.id,
+            `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today!`,
+            {
+                parse_mode: "Markdown"
+            }
+        );
+    } catch (error) {
+        await bot.sendMessage(message.chat.id, "Something went wrong...");
+        await bot.sendMessage(message.chat.id, String(error));
+    } finally {
+        await client.close();
+    }
+});
+
 bot.onText(/^\/ping$/, async (message) => {
     const isMessageFromPerson = message.from && !message.from.is_bot;
 
