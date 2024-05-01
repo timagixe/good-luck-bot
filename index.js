@@ -129,6 +129,43 @@ bot.onText(/^\/lucky$/, async (message) => {
     }
 });
 
+bot.onText(/^\/top$/, async (message) => {
+    const isMessageFromPerson = message.from && !message.from.is_bot;
+
+    if (!isMessageFromPerson) return;
+
+    try {
+        await client.connect();
+
+        const users = await client
+            .db(MONGODB_DATABASE)
+            .collection("participants")
+            .find({})
+            .sort("points", "desc")
+            .toArray();
+
+        const messages = ["Luckiest participants:"].concat(
+            users.map(
+                (user, index) =>
+                    `${index + 1}\\. [${user.name}](tg://user?id=${user.id}) \\- ${
+                        user.points
+                    } lucky points`
+            )
+        );
+
+        console.log(`||${messages.join("\n")}||`);
+
+        await bot.sendMessage(message.chat.id, `||${messages.join("\n")}||`, {
+            parse_mode: "MarkdownV2"
+        });
+    } catch (error) {
+        await bot.sendMessage(message.chat.id, "Something went wrong...");
+        await bot.sendMessage(message.chat.id, String(error));
+    } finally {
+        await client.close();
+    }
+});
+
 bot.onText(/^\/ping$/, async (message) => {
     const isMessageFromPerson = message.from && !message.from.is_bot;
 
