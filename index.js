@@ -199,7 +199,10 @@ bot.onText(/^\/ping/, async (message) => {
     bot.sendMessage(message.chat.id, "Pong!");
 });
 
-scheduler.scheduleJob("00 12 * * *", async () => {
+scheduler.scheduleJob({
+    rule: "0 12 * * *",
+    tz: "Europe/Kyiv"
+}, async () => {
     try {
         await client.connect();
 
