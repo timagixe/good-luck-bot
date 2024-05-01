@@ -71,3 +71,12 @@ bot.onText(/^\/register$/, async (message) => {
         await client.close();
     }
 });
+
+bot.onText(/^\/ping$/, async (message) => {
+    const isMessageFromPerson = message.from && !message.from.is_bot;
+
+    if (!isMessageFromPerson) return;
+
+    bot.sendMessage(message.chat.id, "Pong!");
+});
+
