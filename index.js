@@ -215,7 +215,7 @@ scheduler.scheduleJob({
 
         if (todaysLucky) {
             await bot.sendMessage(
-                message.chat.id,
+                CHATS.MASTER_CHAT,
                 `The luck is over! [${todaysLucky.winner.name}](tg://user?id=${todaysLucky.winner.id}) got it all!`,
                 {
                     parse_mode: "Markdown"
@@ -231,7 +231,7 @@ scheduler.scheduleJob({
             .toArray();
 
         if (users.length === 0) {
-            await bot.sendMessage(message.chat.id, "No participants yet!", {
+            await bot.sendMessage(CHATS.MASTER_CHAT, "No participants yet!", {
                 parse_mode: "Markdown"
             });
             return;
@@ -253,15 +253,15 @@ scheduler.scheduleJob({
             });
 
         await bot.sendMessage(
-            message.chat.id,
+            CHATS.MASTER_CHAT,
             `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today!`,
             {
                 parse_mode: "Markdown"
             }
         );
     } catch (error) {
-        await bot.sendMessage(message.chat.id, "Something went wrong...");
-        await bot.sendMessage(message.chat.id, String(error));
+        await bot.sendMessage(CHATS.MASTER_CHAT, "Something went wrong...");
+        await bot.sendMessage(CHATS.MASTER_CHAT, String(error));
     } finally {
         await client.close();
     }
