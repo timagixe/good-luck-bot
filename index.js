@@ -2,8 +2,39 @@ import { MongoClient, ServerApiVersion } from "mongodb";
 import TelegramBot from "node-telegram-bot-api";
 import dotenv from "dotenv";
 import scheduler from "node-schedule";
+import fastify from "fastify";
 
 dotenv.config();
+
+const port = process.env.PORT || 3000;
+const host = "RENDER" in process.env ? `0.0.0.0` : `localhost`;
+
+const server = fastify({ logger: true });
+
+const html = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>OK</title>
+  </head>
+  <body>
+    <section>
+      <p>OK</p>
+    </section>
+  </body>
+</html>
+`;
+
+server.get("/", function (request, reply) {
+    reply.type("text/html").send(html);
+});
+
+server.listen({ host: host, port: port }, function (err, address) {
+    if (err) {
+        server.log.error(err);
+        process.exit(1);
+    }
+});
 
 const {
     TELEGRAM_BOT_TOKEN,
@@ -199,70 +230,73 @@ bot.onText(/^\/ping/, async (message) => {
     bot.sendMessage(message.chat.id, "Pong!");
 });
 
-scheduler.scheduleJob({
-    rule: "0 12 * * *",
-    tz: "Europe/Kyiv"
-}, async () => {
-    try {
-        await client.connect();
+scheduler.scheduleJob(
+    {
+        rule: "0 12 * * *",
+        tz: "Europe/Kyiv"
+    },
+    async () => {
+        try {
+            await client.connect();
 
-        const todaysLucky = await client
-            .db(MONGODB_DATABASE)
-            .collection("results")
-            .findOne({
-                date: new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" })
-            });
+            const todaysLucky = await client
+                .db(MONGODB_DATABASE)
+                .collection("results")
+                .findOne({
+                    date: new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" })
+                });
 
-        if (todaysLucky) {
+            if (todaysLucky) {
+                await bot.sendMessage(
+                    CHATS.MASTER_CHAT,
+                    `The luck is over! [${todaysLucky.winner.name}](tg://user?id=${todaysLucky.winner.id}) got it all!`,
+                    {
+                        parse_mode: "Markdown"
+                    }
+                );
+                return;
+            }
+
+            const users = await client
+                .db(MONGODB_DATABASE)
+                .collection("participants")
+                .find({})
+                .toArray();
+
+            if (users.length === 0) {
+                await bot.sendMessage(CHATS.MASTER_CHAT, "No participants yet!", {
+                    parse_mode: "Markdown"
+                });
+                return;
+            }
+
+            const randomUser = users[Math.floor(Math.random() * users.length)];
+
+            await client
+                .db(MONGODB_DATABASE)
+                .collection("participants")
+                .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
+
+            await client
+                .db(MONGODB_DATABASE)
+                .collection("results")
+                .insertOne({
+                    date: new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" }),
+                    winner: randomUser
+                });
+
             await bot.sendMessage(
                 CHATS.MASTER_CHAT,
-                `The luck is over! [${todaysLucky.winner.name}](tg://user?id=${todaysLucky.winner.id}) got it all!`,
+                `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today!`,
                 {
                     parse_mode: "Markdown"
                 }
             );
-            return;
+        } catch (error) {
+            await bot.sendMessage(CHATS.MASTER_CHAT, "Something went wrong...");
+            await bot.sendMessage(CHATS.MASTER_CHAT, String(error));
+        } finally {
+            await client.close();
         }
-
-        const users = await client
-            .db(MONGODB_DATABASE)
-            .collection("participants")
-            .find({})
-            .toArray();
-
-        if (users.length === 0) {
-            await bot.sendMessage(CHATS.MASTER_CHAT, "No participants yet!", {
-                parse_mode: "Markdown"
-            });
-            return;
-        }
-
-        const randomUser = users[Math.floor(Math.random() * users.length)];
-
-        await client
-            .db(MONGODB_DATABASE)
-            .collection("participants")
-            .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
-
-        await client
-            .db(MONGODB_DATABASE)
-            .collection("results")
-            .insertOne({
-                date: new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" }),
-                winner: randomUser
-            });
-
-        await bot.sendMessage(
-            CHATS.MASTER_CHAT,
-            `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today!`,
-            {
-                parse_mode: "Markdown"
-            }
-        );
-    } catch (error) {
-        await bot.sendMessage(CHATS.MASTER_CHAT, "Something went wrong...");
-        await bot.sendMessage(CHATS.MASTER_CHAT, String(error));
-    } finally {
-        await client.close();
     }
-});
+);
