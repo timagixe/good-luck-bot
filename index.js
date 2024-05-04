@@ -197,8 +197,7 @@ bot.onText(/^\/top/, async (message) => {
         const users = await client
             .db(MONGODB_DATABASE)
             .collection("participants")
-            .find({})
-            .sort("points", "desc")
+            .find({}, { sort: { points: "desc" } })
             .toArray();
 
         if (users.length === 0) {
