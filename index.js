@@ -292,7 +292,16 @@ scheduler.scheduleJob(
                 return;
             }
 
-            const randomUser = users[Math.floor(Math.random() * users.length)];
+            const shuffledUsers = users
+                .map((user) => ({
+                    user,
+                    value: crypto.randomInt(0, users.length * 64)
+                }))
+                .sort((a, b) => a.value - b.value)
+                .map(({ user }) => user);
+
+            const index = crypto.randomInt(0, shuffledUsers.length);
+            const randomUser = shuffledUsers[index];
 
             await client
                 .db(MONGODB_DATABASE)
@@ -307,13 +316,29 @@ scheduler.scheduleJob(
                     winner: randomUser
                 });
 
-            await bot.sendMessage(
-                CHATS.MASTER_CHAT,
-                `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today!`,
-                {
-                    parse_mode: "Markdown"
-                }
-            );
+            const goatUser = await client
+                .db(MONGODB_DATABASE)
+                .collection("participants")
+                .findOne({}, { sort: { points: "desc" } });
+
+            if (goatUser.id === randomUser.id) {
+                await bot.sendVideo(
+                    CHATS.MASTER_CHAT,
+                    path.resolve(__dirname, "assets", "goat.mp4"),
+                    {
+                        caption: `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today! 🐐🐐🐐`,
+                        parse_mode: "Markdown"
+                    }
+                );
+            } else {
+                await bot.sendMessage(
+                    CHATS.MASTER_CHAT,
+                    `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today!`,
+                    {
+                        parse_mode: "Markdown"
+                    }
+                );
+            }
         } catch (error) {
             await bot.sendMessage(CHATS.MASTER_CHAT, "Something went wrong...");
             await bot.sendMessage(CHATS.MASTER_CHAT, String(error));
