@@ -1,9 +1,15 @@
 import crypto from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
 import { MongoClient, ServerApiVersion } from "mongodb";
 import TelegramBot from "node-telegram-bot-api";
 import dotenv from "dotenv";
 import scheduler from "node-schedule";
 import fastify from "fastify";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 dotenv.config();
 
@@ -170,13 +176,25 @@ bot.onText(/^\/lucky/, async (message) => {
                 winner: randomUser
             });
 
-        await bot.sendMessage(
-            message.chat.id,
-            `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today!`,
-            {
+        const goatUser = await client
+            .db(MONGODB_DATABASE)
+            .collection("participants")
+            .findOne({}, { sort: { points: "desc" } });
+
+        if (goatUser.id === randomUser.id) {
+            await bot.sendVideo(message.chat.id, path.resolve(__dirname, "assets", "goat.mp4"), {
+                caption: `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today! 🐐🐐🐐`,
                 parse_mode: "Markdown"
-            }
-        );
+            });
+        } else {
+            await bot.sendMessage(
+                message.chat.id,
+                `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today!`,
+                {
+                    parse_mode: "Markdown"
+                }
+            );
+        }
     } catch (error) {
         await bot.sendMessage(message.chat.id, "Something went wrong...");
         await bot.sendMessage(message.chat.id, String(error));
