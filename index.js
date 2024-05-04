@@ -11,22 +11,8 @@ const host = "RENDER" in process.env ? `0.0.0.0` : `localhost`;
 
 const server = fastify({ logger: true });
 
-const html = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>OK</title>
-  </head>
-  <body>
-    <section>
-      <p>OK</p>
-    </section>
-  </body>
-</html>
-`;
-
-server.get("/", function (request, reply) {
-    reply.type("text/html").send(html);
+server.get("/", function (_request, reply) {
+    reply.type("application/json").send({ status: "OK" });
 });
 
 server.listen({ host: host, port: port }, function (err, address) {
@@ -49,14 +35,14 @@ const {
 const CHATS = Object.fromEntries(KNOWN_CHATS.split(";").map((entry) => entry.split(":")));
 
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN);
-bot.setWebHook(`${URL}/bot${TELEGRAM_BOT_TOKEN}`);
+// bot.setWebHook(`${URL}/bot${TELEGRAM_BOT_TOKEN}`);
 
-server.post(`/bot${TELEGRAM_BOT_TOKEN}`, async (request, reply) => {
-    const { body } = request;
-    console.log(body);
-    bot.processUpdate(body);
-    reply.send({ ok: true });
-});
+// server.post(`/bot${TELEGRAM_BOT_TOKEN}`, async (request, reply) => {
+//     const { body } = request;
+//     console.log(body);
+//     bot.processUpdate(body);
+//     reply.send({ ok: true });
+// });
 
 const client = new MongoClient(
     `mongodb+srv://${MONGODB_USER}:${MONGODB_PASSWORD}@${MONGODB_CLUSTER}/?retryWrites=true&w=majority&appName=Cluster0`,
