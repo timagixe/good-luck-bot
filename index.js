@@ -146,7 +146,16 @@ bot.onText(/^\/lucky/, async (message) => {
             return;
         }
 
-        const randomUser = users[crypto.randomInt(0, users.length)];
+        const shuffledUsers = users
+            .map((user) => ({
+                user,
+                value: crypto.randomInt(0, users.length * 64)
+            }))
+            .sort((a, b) => a.value - b.value)
+            .map(({ user }) => user);
+
+        const index = crypto.randomInt(0, shuffledUsers.length);
+        const randomUser = shuffledUsers[index];
 
         await client
             .db(MONGODB_DATABASE)
