@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { MongoClient, ServerApiVersion } from "mongodb";
 import TelegramBot from "node-telegram-bot-api";
 import dotenv from "dotenv";
@@ -145,7 +146,7 @@ bot.onText(/^\/lucky/, async (message) => {
             return;
         }
 
-        const randomUser = users[Math.floor(Math.random() * users.length)];
+        const randomUser = users[crypto.randomInt(0, users.length)];
 
         await client
             .db(MONGODB_DATABASE)
