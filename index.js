@@ -29,16 +29,7 @@ server.listen({ host: host, port: port }, function (err, address) {
     }
 });
 
-const {
-    TELEGRAM_BOT_TOKEN,
-    MONGODB_USER,
-    MONGODB_PASSWORD,
-    MONGODB_CLUSTER,
-    KNOWN_CHATS,
-    URL
-} = process.env;
-
-const CHATS = Object.fromEntries(KNOWN_CHATS.split(";").map((entry) => entry.split(":")));
+const { TELEGRAM_BOT_TOKEN, MONGODB_USER, MONGODB_PASSWORD, MONGODB_CLUSTER, URL } = process.env;
 
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN);
 bot.setWebHook(`${URL}/bot${TELEGRAM_BOT_TOKEN}`);
@@ -62,10 +53,9 @@ const client = new MongoClient(
 );
 
 bot.onText(/^\/register/, async (message) => {
-    const isKnownChat = message.chat.id in CHATS;
     const isMessageFromPerson = message.from && !message.from.is_bot;
 
-    if (!isMessageFromPerson || !isKnownChat) return;
+    if (!isMessageFromPerson) return;
 
     try {
         await client.connect();
@@ -115,10 +105,9 @@ bot.onText(/^\/register/, async (message) => {
 });
 
 bot.onText(/^\/lucky/, async (message) => {
-    const isKnownChat = message.chat.id in CHATS;
     const isMessageFromPerson = message.from && !message.from.is_bot;
 
-    if (!isMessageFromPerson || !isKnownChat) return;
+    if (!isMessageFromPerson) return;
 
     try {
         await client.connect();
@@ -206,10 +195,9 @@ bot.onText(/^\/lucky/, async (message) => {
 });
 
 bot.onText(/^\/top/, async (message) => {
-    const isKnownChat = message.chat.id in CHATS;
     const isMessageFromPerson = message.from && !message.from.is_bot;
 
-    if (!isMessageFromPerson || !isKnownChat) return;
+    if (!isMessageFromPerson) return;
 
     try {
         await client.connect();
@@ -246,10 +234,9 @@ bot.onText(/^\/top/, async (message) => {
 });
 
 bot.onText(/^\/ping/, async (message) => {
-    const isKnownChat = message.chat.id in CHATS;
     const isMessageFromPerson = message.from && !message.from.is_bot;
 
-    if (!isMessageFromPerson || !isKnownChat) return;
+    if (!isMessageFromPerson) return;
 
     bot.sendMessage(message.chat.id, "Pong!");
 });
