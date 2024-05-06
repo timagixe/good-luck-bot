@@ -15,7 +15,6 @@
     "dotenv": "^16.4.5",
     "fastify": "^4.26.2",
     "mongodb": "^6.5.0",
-    "node-schedule": "^2.1.1",
     "node-telegram-bot-api": "^0.65.1"
   },
   "devDependencies": {
