@@ -36,7 +36,7 @@ bot.setWebHook(`${URL}/bot${TELEGRAM_BOT_TOKEN}`);
 
 server.post(`/bot${TELEGRAM_BOT_TOKEN}`, async (request, reply) => {
     const { body } = request;
-    console.log(body);
+    server.log.info(body);
     bot.processUpdate(body);
     reply.send({ ok: true });
 });
