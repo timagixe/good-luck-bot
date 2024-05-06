@@ -34,7 +34,6 @@ const {
     MONGODB_USER,
     MONGODB_PASSWORD,
     MONGODB_CLUSTER,
-    MONGODB_DATABASE,
     KNOWN_CHATS,
     URL
 } = process.env;
@@ -71,9 +70,12 @@ bot.onText(/^\/register/, async (message) => {
     try {
         await client.connect();
 
-        const user = await client.db(MONGODB_DATABASE).collection("participants").findOne({
-            id: message.from.id
-        });
+        const user = await client
+            .db(message.chat.id.toString())
+            .collection("participants")
+            .findOne({
+                id: message.from.id
+            });
 
         if (user) {
             await bot.sendMessage(
@@ -87,7 +89,7 @@ bot.onText(/^\/register/, async (message) => {
         }
 
         await client
-            .db(MONGODB_DATABASE)
+            .db(message.chat.id.toString())
             .collection("participants")
             .insertOne({
                 id: message.from.id,
@@ -122,7 +124,7 @@ bot.onText(/^\/lucky/, async (message) => {
         await client.connect();
 
         const todaysLucky = await client
-            .db(MONGODB_DATABASE)
+            .db(message.chat.id.toString())
             .collection("results")
             .findOne({
                 date: new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" })
@@ -140,7 +142,7 @@ bot.onText(/^\/lucky/, async (message) => {
         }
 
         const users = await client
-            .db(MONGODB_DATABASE)
+            .db(message.chat.id.toString())
             .collection("participants")
             .find({})
             .toArray();
@@ -164,12 +166,12 @@ bot.onText(/^\/lucky/, async (message) => {
         const randomUser = shuffledUsers[index];
 
         await client
-            .db(MONGODB_DATABASE)
+            .db(message.chat.id.toString())
             .collection("participants")
             .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
 
         await client
-            .db(MONGODB_DATABASE)
+            .db(message.chat.id.toString())
             .collection("results")
             .insertOne({
                 date: new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" }),
@@ -177,7 +179,7 @@ bot.onText(/^\/lucky/, async (message) => {
             });
 
         const goatUser = await client
-            .db(MONGODB_DATABASE)
+            .db(message.chat.id.toString())
             .collection("participants")
             .findOne({}, { sort: { points: "desc" } });
 
@@ -213,7 +215,7 @@ bot.onText(/^\/top/, async (message) => {
         await client.connect();
 
         const users = await client
-            .db(MONGODB_DATABASE)
+            .db(message.chat.id.toString())
             .collection("participants")
             .find({}, { sort: { points: "desc" } })
             .toArray();
