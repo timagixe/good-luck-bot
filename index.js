@@ -6,7 +6,7 @@ import { MongoClient, ServerApiVersion } from "mongodb";
 import TelegramBot from "node-telegram-bot-api";
 import dotenv from "dotenv";
 import fastify from "fastify";
-import { isMessageFromPerson } from "./utils.js";
+import { getTodayDate, isMessageFromPerson } from "./utils.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -112,7 +112,7 @@ bot.onText(/^\/lucky/, async (message) => {
             .db(message.chat.id.toString())
             .collection("results")
             .findOne({
-                date: new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" })
+                date: getTodayDate()
             });
 
         if (todaysLucky) {
@@ -155,13 +155,10 @@ bot.onText(/^\/lucky/, async (message) => {
             .collection("participants")
             .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
 
-        await client
-            .db(message.chat.id.toString())
-            .collection("results")
-            .insertOne({
-                date: new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" }),
-                winner: randomUser
-            });
+        await client.db(message.chat.id.toString()).collection("results").insertOne({
+            date: getTodayDate(),
+            winner: randomUser
+        });
 
         const goatUser = await client
             .db(message.chat.id.toString())
