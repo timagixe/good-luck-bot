@@ -5,7 +5,6 @@ import { dirname } from "node:path";
 import { MongoClient, ServerApiVersion } from "mongodb";
 import TelegramBot from "node-telegram-bot-api";
 import dotenv from "dotenv";
-// import scheduler from "node-schedule";
 import fastify from "fastify";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -240,99 +239,3 @@ bot.onText(/^\/ping/, async (message) => {
 
     bot.sendMessage(message.chat.id, "Pong!");
 });
-
-// scheduler.scheduleJob(
-//     {
-//         rule: "0 12 * * *",
-//         tz: "Europe/Kyiv"
-//     },
-//     async () => {
-//         try {
-//             await client.connect();
-
-//             const todaysLucky = await client
-//                 .db(MONGODB_DATABASE)
-//                 .collection("results")
-//                 .findOne({
-//                     date: new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" })
-//                 });
-
-//             if (todaysLucky) {
-//                 await bot.sendMessage(
-//                     CHATS.MASTER_CHAT,
-//                     `The luck is over! [${todaysLucky.winner.name}](tg://user?id=${todaysLucky.winner.id}) got it all!`,
-//                     {
-//                         parse_mode: "Markdown"
-//                     }
-//                 );
-//                 return;
-//             }
-
-//             const users = await client
-//                 .db(MONGODB_DATABASE)
-//                 .collection("participants")
-//                 .find({})
-//                 .toArray();
-
-//             if (users.length === 0) {
-//                 await bot.sendMessage(CHATS.MASTER_CHAT, "No participants yet!", {
-//                     parse_mode: "Markdown"
-//                 });
-//                 return;
-//             }
-
-//             const shuffledUsers = users
-//                 .map((user) => ({
-//                     user,
-//                     value: crypto.randomInt(0, users.length * 64)
-//                 }))
-//                 .sort((a, b) => a.value - b.value)
-//                 .map(({ user }) => user);
-
-//             const index = crypto.randomInt(0, shuffledUsers.length);
-//             const randomUser = shuffledUsers[index];
-
-//             await client
-//                 .db(MONGODB_DATABASE)
-//                 .collection("participants")
-//                 .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
-
-//             await client
-//                 .db(MONGODB_DATABASE)
-//                 .collection("results")
-//                 .insertOne({
-//                     date: new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" }),
-//                     winner: randomUser
-//                 });
-
-//             const goatUser = await client
-//                 .db(MONGODB_DATABASE)
-//                 .collection("participants")
-//                 .findOne({}, { sort: { points: "desc" } });
-
-//             if (goatUser.id === randomUser.id) {
-//                 await bot.sendVideo(
-//                     CHATS.MASTER_CHAT,
-//                     path.resolve(__dirname, "assets", "goat.mp4"),
-//                     {
-//                         caption: `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today! 🐐🐐🐐`,
-//                         parse_mode: "Markdown"
-//                     }
-//                 );
-//             } else {
-//                 await bot.sendMessage(
-//                     CHATS.MASTER_CHAT,
-//                     `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today!`,
-//                     {
-//                         parse_mode: "Markdown"
-//                     }
-//                 );
-//             }
-//         } catch (error) {
-//             await bot.sendMessage(CHATS.MASTER_CHAT, "Something went wrong...");
-//             await bot.sendMessage(CHATS.MASTER_CHAT, String(error));
-//         } finally {
-//             await client.close();
-//         }
-//     }
-// );
