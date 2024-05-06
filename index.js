@@ -6,6 +6,7 @@ import { MongoClient, ServerApiVersion } from "mongodb";
 import TelegramBot from "node-telegram-bot-api";
 import dotenv from "dotenv";
 import fastify from "fastify";
+import { isMessageFromPerson } from "./utils.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -52,9 +53,7 @@ const client = new MongoClient(
 );
 
 bot.onText(/^\/register/, async (message) => {
-    const isMessageFromPerson = message.from && !message.from.is_bot;
-
-    if (!isMessageFromPerson) return;
+    if (!isMessageFromPerson(message)) return;
 
     try {
         await client.connect();
@@ -104,9 +103,7 @@ bot.onText(/^\/register/, async (message) => {
 });
 
 bot.onText(/^\/lucky/, async (message) => {
-    const isMessageFromPerson = message.from && !message.from.is_bot;
-
-    if (!isMessageFromPerson) return;
+    if (!isMessageFromPerson(message)) return;
 
     try {
         await client.connect();
@@ -194,9 +191,7 @@ bot.onText(/^\/lucky/, async (message) => {
 });
 
 bot.onText(/^\/top/, async (message) => {
-    const isMessageFromPerson = message.from && !message.from.is_bot;
-
-    if (!isMessageFromPerson) return;
+    if (!isMessageFromPerson(message)) return;
 
     try {
         await client.connect();
@@ -233,9 +228,7 @@ bot.onText(/^\/top/, async (message) => {
 });
 
 bot.onText(/^\/ping/, async (message) => {
-    const isMessageFromPerson = message.from && !message.from.is_bot;
-
-    if (!isMessageFromPerson) return;
+    if (!isMessageFromPerson(message)) return;
 
     bot.sendMessage(message.chat.id, "Pong!");
 });
