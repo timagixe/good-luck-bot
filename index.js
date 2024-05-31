@@ -29,7 +29,13 @@ server.listen({ host: host, port: port }, function (err, address) {
     }
 });
 
-const { TELEGRAM_BOT_TOKEN, MONGODB_USER, MONGODB_PASSWORD, MONGODB_CLUSTER, URL } = process.env;
+const {
+    TELEGRAM_BOT_TOKEN,
+    MONGODB_USER,
+    MONGODB_PASSWORD,
+    MONGODB_CLUSTER,
+    URL
+} = process.env;
 
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN);
 bot.setWebHook(`${URL}/bot${TELEGRAM_BOT_TOKEN}`);
@@ -87,9 +93,9 @@ bot.onText(/^\/register/, async (message) => {
 
         await bot.sendMessage(
             message.chat.id,
-            `[${message.from.username || message.from.first_name}](tg://user?id=${
-                message.from.id
-            }) successfully registered!`,
+            `[${
+                message.from.username || message.from.first_name
+            }](tg://user?id=${message.from.id}) successfully registered!`,
             {
                 parse_mode: "Markdown"
             }
@@ -155,10 +161,13 @@ bot.onText(/^\/lucky/, async (message) => {
             .collection("participants")
             .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
 
-        await client.db(message.chat.id.toString()).collection("results").insertOne({
-            date: getTodayDate(),
-            winner: randomUser
-        });
+        await client
+            .db(message.chat.id.toString())
+            .collection("results")
+            .insertOne({
+                date: getTodayDate(),
+                winner: randomUser
+            });
 
         const goatUser = await client
             .db(message.chat.id.toString())
@@ -166,10 +175,14 @@ bot.onText(/^\/lucky/, async (message) => {
             .findOne({}, { sort: { points: "desc" } });
 
         if (goatUser.id === randomUser.id) {
-            await bot.sendVideo(message.chat.id, path.resolve(__dirname, "assets", "goat.mp4"), {
-                caption: `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today! 🐐🐐🐐`,
-                parse_mode: "Markdown"
-            });
+            await bot.sendVideo(
+                message.chat.id,
+                path.resolve(__dirname, "assets", "goat.mp4"),
+                {
+                    caption: `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today! 🐐🐐🐐`,
+                    parse_mode: "Markdown"
+                }
+            );
         } else {
             await bot.sendMessage(
                 message.chat.id,
@@ -209,7 +222,9 @@ bot.onText(/^\/top/, async (message) => {
         const messages = ["*Ranking:*"].concat(
             users.map(
                 (user, index) =>
-                    `${index + 1}. [${user.name}](tg://user?id=${user.id}) - ${user.points} points`
+                    `${index + 1}. [${user.name}](tg://user?id=${user.id}) - ${
+                        user.points
+                    } points`
             )
         );
 
