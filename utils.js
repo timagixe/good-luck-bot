@@ -8,3 +8,9 @@ export function isMessageFromPerson(message) {
 export function getTodayDate() {
     return new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" });
 }
+
+export function isLastDayOfMonth(date) {
+    const tomorrow = new Date(date);
+    tomorrow.setDate(date.getDate() + 1);
+    return tomorrow.getMonth() !== date.getMonth();
+}
