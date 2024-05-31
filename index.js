@@ -365,3 +365,26 @@ bot.onText(/^\/ping/, async (message) => {
 
     bot.sendMessage(message.chat.id, "Pong!");
 });
+
+bot.setMyCommands([
+    {
+        command: "/register",
+        description: "Register to the game"
+    },
+    {
+        command: "/lucky",
+        description: "Try your luck"
+    },
+    {
+        command: "/champion",
+        description: "Find out who is the GOAT of the month"
+    },
+    {
+        command: "/top",
+        description: "Get the top participants"
+    },
+    {
+        command: "/ping",
+        description: "Ping the bot"
+    }
+]);
