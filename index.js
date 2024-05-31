@@ -6,7 +6,11 @@ import { MongoClient, ServerApiVersion } from "mongodb";
 import TelegramBot from "node-telegram-bot-api";
 import dotenv from "dotenv";
 import fastify from "fastify";
-import { getTodayDate, isMessageFromPerson } from "./utils.js";
+import {
+    getTodayDate,
+    isLastDayOfMonth,
+    isMessageFromPerson
+} from "./utils.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -192,6 +196,123 @@ bot.onText(/^\/lucky/, async (message) => {
                 }
             );
         }
+    } catch (error) {
+        await bot.sendMessage(message.chat.id, "Something went wrong...");
+        await bot.sendMessage(message.chat.id, String(error));
+    } finally {
+        await client.close();
+    }
+});
+
+bot.onText(/^\/champion/, async (message) => {
+    if (!isMessageFromPerson(message)) return;
+
+    try {
+        await client.connect();
+
+        if (!isLastDayOfMonth(new Date(getTodayDate()))) {
+            await bot.sendMessage(
+                message.chat.id,
+                `Today is not the last day of the month!`,
+                {
+                    parse_mode: "Markdown"
+                }
+            );
+            return;
+        }
+
+        const todaysLucky = await client
+            .db(message.chat.id.toString())
+            .collection("results")
+            .findOne({
+                date: getTodayDate()
+            });
+
+        if (!todaysLucky) {
+            await bot.sendMessage(
+                message.chat.id,
+                `First you need to find out who is the luckiest today!`,
+                {
+                    parse_mode: "Markdown"
+                }
+            );
+            return;
+        }
+
+        const users = await client
+            .db(message.chat.id.toString())
+            .collection("participants")
+            .find({}, { sort: { points: "desc" } })
+            .toArray();
+
+        if (users.length === 0) {
+            await bot.sendMessage(message.chat.id, "No participants yet!", {
+                parse_mode: "Markdown"
+            });
+            return;
+        }
+
+        const highestPointsCount = users[0].points;
+
+        const highestPointsUsers = users.filter(
+            (user) => user.points === highestPointsCount
+        );
+
+        if (highestPointsUsers.length <= 1) {
+            await bot.sendMessage(
+                message.chat.id,
+                `There is only one participant with the highest points!`,
+                {
+                    parse_mode: "Markdown"
+                }
+            );
+            return;
+        }
+
+        await bot.sendMessage(
+            message.chat.id,
+            `Who is the GOAT of the month ${highestPointsUsers
+                .map((user) => `[${user.name}](tg://user?id=${user.id})`)
+                .join(" or ")}? 🏆🍾🥇🐐`,
+            {
+                parse_mode: "Markdown"
+            }
+        );
+
+        const shuffledUsers = highestPointsUsers
+            .map((user) => ({
+                user,
+                value: crypto.randomInt(0, highestPointsUsers.length * 64)
+            }))
+            .sort((a, b) => a.value - b.value)
+            .map(({ user }) => user);
+
+        const index = crypto.randomInt(0, shuffledUsers.length);
+        const randomUser = shuffledUsers[index];
+
+        await client
+            .db(message.chat.id.toString())
+            .collection("participants")
+            .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
+
+        await client
+            .db(message.chat.id.toString())
+            .collection("results")
+            .insertOne({
+                date: getTodayDate(),
+                winner: randomUser
+            });
+
+        await bot.sendVideo(
+            message.chat.id,
+            path.resolve(__dirname, "assets", "goat.mp4"),
+            {
+                caption: `[${randomUser.name.toUpperCase()}](tg://user?id=${
+                    randomUser.id
+                }) IS THE GOAT OF THE MONTH! 🏆🍾🥇🐐`,
+                parse_mode: "Markdown"
+            }
+        );
     } catch (error) {
         await bot.sendMessage(message.chat.id, "Something went wrong...");
         await bot.sendMessage(message.chat.id, String(error));
