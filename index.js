@@ -248,6 +248,25 @@ bot.onText(/^\/ping/, async (message) => {
     bot.sendMessage(message.chat.id, "Pong!");
 });
 
+bot.onText(/^\/progress/, async (message) => {
+    if (!isMessageFromPerson(message)) return;
+
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1); // January 1st of the current year
+    const endOfYear = new Date(now.getFullYear() + 1, 0, 1); // January 1st of the next year
+
+    const totalDays = (endOfYear - startOfYear) / (1000 * 60 * 60 * 24); // Total days in the year
+    const daysPassed = (now - startOfYear) / (1000 * 60 * 60 * 24); // Days passed so far
+
+    const progress = ((daysPassed / totalDays) * 100).toFixed(5); // Percentage rounded to 2 decimal places
+
+
+    bot.sendMessage(
+        message.chat.id,
+        `Year Progress: ${progress}%`
+    );
+});
+
 bot.setMyCommands([
     {
         command: "/register",
@@ -264,5 +283,9 @@ bot.setMyCommands([
     {
         command: "/ping",
         description: "Ping the bot"
+    },
+    {
+        command: "/progress",
+        description: "Get year's progress"
     }
 ]);
