@@ -285,26 +285,42 @@ bot.onText(/^\/chances/, async (message) => {
       return;
     }
 
-    const simulations = 10000;
+    const now = new Date();
+    const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
+    const remainingDays = Math.ceil((endOfYear - now) / (1000 * 60 * 60 * 24));
+    const simulations = 1000;
     const winCounts = {};
 
-    for (let i = 0; i < simulations; i++) {
-      const shuffledUsers = users
-        .map((user) => ({
-          user,
-          value: crypto.randomInt(0, users.length * 64),
-        }))
-        .sort((a, b) => a.value - b.value)
-        .map(({ user }) => user);
+    for (let sim = 0; sim < simulations; sim++) {
+      const points = {
+        ...users.reduce(
+          (acc, user) => ({ ...acc, [user.id]: user.points }),
+          {}
+        ),
+      };
 
-      const index = crypto.randomInt(0, shuffledUsers.length);
-      const randomUser = shuffledUsers[index];
+      for (let day = 0; day < remainingDays; day++) {
+        const shuffledUsers = users
+          .map((user) => ({
+            user,
+            value: crypto.randomInt(0, users.length * 64),
+          }))
+          .sort((a, b) => a.value - b.value)
+          .map(({ user }) => user);
 
-      winCounts[randomUser.id] = (winCounts[randomUser.id] || 0) + 1;
+        const index = crypto.randomInt(0, shuffledUsers.length);
+        const randomUser = shuffledUsers[index];
+        points[randomUser.id] = (points[randomUser.id] || 0) + 1;
+      }
+
+      const winner = Object.keys(points).reduce((a, b) =>
+        points[a] > points[b] ? a : b
+      );
+      winCounts[winner] = (winCounts[winner] || 0) + 1;
     }
 
     const messages = [
-      "*Winning Chances (Monte Carlo Simulation, 10,000 runs):*",
+      `*Winning Chances (Monte Carlo Simulation, 1,000 runs for ${remainingDays} remaining days):*`,
     ].concat(
       users.map(
         (user, index) =>
