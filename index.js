@@ -294,7 +294,7 @@ bot.onText(/^\/chances/, async (message) => {
     const daysLeft = totalDays - daysPassed;
 
     // Monte Carlo Simulation
-    const simulations = 1000;
+    const simulations = 100000;
     const winCounts = new Map(users.map((user) => [user.id, 0]));
 
     for (let sim = 0; sim < simulations; sim++) {
@@ -319,14 +319,15 @@ bot.onText(/^\/chances/, async (message) => {
     const totalWins = Array.from(winCounts.values()).reduce((a, b) => a + b, 0);
     const probabilities = users.map((user) => ({
       name: user.name,
+      userId: user.id,
       probability: ((winCounts.get(user.id) / totalWins) * 100).toFixed(2),
     }));
 
     // Format response
     const messages = ["*Winning Chances:*"].concat(
       probabilities.map(
-        ({ name, probability }) =>
-          `[${name}](tg://user?id=${name}) - ${probability}%`
+        ({ name, probability, userId }) =>
+          `[${name}](tg://user?id=${userId}) - ${probability}%`
       )
     );
 
