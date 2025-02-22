@@ -275,7 +275,7 @@ bot.onText(/^\/chances/, async (message) => {
     const users = await client
       .db(message.chat.id.toString())
       .collection("participants")
-      .find({}, { sort: { points: "desc" } })
+      .find({})
       .toArray();
 
     if (users.length === 0) {
@@ -285,28 +285,52 @@ bot.onText(/^\/chances/, async (message) => {
       return;
     }
 
-    const totalPoints = users.reduce((sum, user) => sum + user.points, 0);
+    // Get current date and remaining days
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
+    const daysPassed = Math.floor((now - startOfYear) / (1000 * 60 * 60 * 24));
+    const totalDays = (endOfYear - startOfYear) / (1000 * 60 * 60 * 24);
+    const daysLeft = totalDays - daysPassed;
 
-    if (totalPoints === 0) {
-      await bot.sendMessage(message.chat.id, "No points accumulated yet!", {
-        parse_mode: "Markdown",
-      });
-      return;
+    // Monte Carlo Simulation
+    const simulations = 1000;
+    const winCounts = new Map(users.map((user) => [user.id, 0]));
+
+    for (let sim = 0; sim < simulations; sim++) {
+      const tempPoints = new Map(users.map((user) => [user.id, user.points]));
+
+      for (let day = 0; day < daysLeft; day++) {
+        const winner = users[Math.floor(Math.random() * users.length)];
+        tempPoints.set(winner.id, tempPoints.get(winner.id) + 1);
+      }
+
+      // Determine the winner
+      const maxPoints = Math.max(...tempPoints.values());
+      const winners = [...tempPoints.entries()].filter(
+        ([_, points]) => points === maxPoints
+      );
+      const finalWinner =
+        winners[Math.floor(Math.random() * winners.length)][0];
+      winCounts.set(finalWinner, winCounts.get(finalWinner) + 1);
     }
 
+    // Compute probabilities
+    const totalWins = Array.from(winCounts.values()).reduce((a, b) => a + b, 0);
+    const probabilities = users.map((user) => ({
+      name: user.name,
+      probability: ((winCounts.get(user.id) / totalWins) * 100).toFixed(2),
+    }));
+
+    // Format response
     const messages = ["*Winning Chances:*"].concat(
-      users.map(
-        (user, index) =>
-          `${index + 1}. [${user.name}](tg://user?id=${user.id}) - ${(
-            (user.points / totalPoints) *
-            100
-          ).toFixed(2)}%`
+      probabilities.map(
+        ({ name, probability }) =>
+          `[${name}](tg://user?id=${name}) - ${probability}%`
       )
     );
 
-    await bot.sendMessage(message.chat.id, `${messages.join("\n")}`, {
-      parse_mode: "Markdown",
-    });
+    await bot.sendMessage(message.chat.id, `${messages.join("\n")}`);
   } catch (error) {
     await bot.sendMessage(message.chat.id, "Something went wrong...");
     await bot.sendMessage(message.chat.id, String(error));
