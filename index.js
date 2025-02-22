@@ -288,7 +288,7 @@ bot.onText(/^\/chances/, async (message) => {
     const now = new Date();
     const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
     const remainingDays = Math.ceil((endOfYear - now) / (1000 * 60 * 60 * 24));
-    const simulations = 1000;
+    const simulations = 10000;
     const winCounts = {};
 
     for (let sim = 0; sim < simulations; sim++) {
@@ -320,7 +320,7 @@ bot.onText(/^\/chances/, async (message) => {
     }
 
     const messages = [
-      `*Winning Chances (Monte Carlo Simulation, 1,000 runs for ${remainingDays} remaining days):*`,
+      `*Winning Chances (Monte Carlo Simulation, 10,000 runs for ${remainingDays} remaining days):*`,
     ].concat(
       users.map(
         (user, index) =>
