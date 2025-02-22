@@ -262,8 +262,7 @@ bot.onText(/^\/progress/, async (message) => {
 
   bot.sendMessage(
     message.chat.id,
-    `Year Progress: ${progress}%
-    Days Left: ${remainingDays}`
+    `Year Progress: ${progress}%\nDays Left: ${remainingDays}`
   );
 });
 
@@ -278,6 +277,22 @@ bot.onText(/^\/chances/, async (message) => {
       .collection("participants")
       .find({}, { sort: { points: "desc" } })
       .toArray();
+
+    if (users.length === 0) {
+      await bot.sendMessage(message.chat.id, "No participants yet!", {
+        parse_mode: "Markdown",
+      });
+      return;
+    }
+
+    const totalPoints = users.reduce((sum, user) => sum + user.points, 0);
+
+    if (totalPoints === 0) {
+      await bot.sendMessage(message.chat.id, "No points accumulated yet!", {
+        parse_mode: "Markdown",
+      });
+      return;
+    }
 
     const messages = ["*Winning Chances:*"].concat(
       users.map(
