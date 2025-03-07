@@ -113,6 +113,7 @@ bot.onText(/^\/lucky/, async (message) => {
 
   try {
     await client.connect();
+    await bot.sendMessage(message.chat.id, "🎲 Rolling the dice of fortune...");
 
     const todaysLucky = await client
       .db(message.chat.id.toString())
@@ -145,6 +146,23 @@ bot.onText(/^\/lucky/, async (message) => {
       return;
     }
 
+    await bot.sendMessage(
+      message.chat.id,
+      `🎯 Found ${users.length} participants in the game!`
+    );
+
+    const participantsList = ["*Participants:*"].concat(
+      users.map(
+        (user) => `• [${user.name}](tg://user?id=${user.id}) - ${user.points} points`
+      )
+    );
+
+    await bot.sendMessage(message.chat.id, participantsList.join("\n"), {
+      parse_mode: "Markdown",
+    });
+
+    await bot.sendMessage(message.chat.id, "🔄 Shuffling participants...");
+
     const shuffledUsers = users
       .map((user) => ({
         user,
@@ -153,8 +171,28 @@ bot.onText(/^\/lucky/, async (message) => {
       .sort((a, b) => a.value - b.value)
       .map(({ user }) => user);
 
+    const shuffledList = ["*Shuffled Participants:*"].concat(
+      shuffledUsers.map(
+        (user, index) => `${index + 1}. [${user.name}](tg://user?id=${user.id})`
+      )
+    );
+
+    await bot.sendMessage(message.chat.id, shuffledList.join("\n"), {
+      parse_mode: "Markdown",
+    });
+
     const index = crypto.randomInt(0, shuffledUsers.length);
     const randomUser = shuffledUsers[index];
+
+    await bot.sendMessage(
+      message.chat.id,
+      `🎯 Selected user with index - ${index} - [${randomUser.name}](tg://user?id=${randomUser.id}) (position ${index + 1})`,
+      {
+        parse_mode: "Markdown",
+      }
+    );
+
+    await bot.sendMessage(message.chat.id, "📊 Updating points...");
 
     await client
       .db(message.chat.id.toString())
@@ -175,6 +213,7 @@ bot.onText(/^\/lucky/, async (message) => {
       .findOne({}, { sort: { points: "desc" } });
 
     if (goatUser.id === randomUser.id) {
+      await bot.sendMessage(message.chat.id, "🎉 We have a GOAT winner!");
       await bot.sendVideo(
         message.chat.id,
         path.resolve(__dirname, "assets", "goat.mp4"),
@@ -192,8 +231,18 @@ bot.onText(/^\/lucky/, async (message) => {
         }
       );
     }
+
+    await bot.sendMessage(
+      message.chat.id,
+      `📈 [${randomUser.name}](tg://user?id=${randomUser.id}) now has ${
+        randomUser.points + 1
+      } points!`,
+      {
+        parse_mode: "Markdown",
+      }
+    );
   } catch (error) {
-    await bot.sendMessage(message.chat.id, "Something went wrong...");
+    await bot.sendMessage(message.chat.id, "❌ Something went wrong...");
     await bot.sendMessage(message.chat.id, String(error));
   } finally {
     await client.close();
