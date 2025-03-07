@@ -186,7 +186,7 @@ bot.onText(/^\/lucky/, async (message) => {
 
     await bot.sendMessage(
       message.chat.id,
-      `🎯 Selected user with index - ${index} - [${randomUser.name}](tg://user?id=${randomUser.id}) (position ${index + 1})`,
+      `🎯 Selected user with index - ${index + 1} - [${randomUser.name}](tg://user?id=${randomUser.id}) (position ${index + 1})`,
       {
         parse_mode: "Markdown",
       }
