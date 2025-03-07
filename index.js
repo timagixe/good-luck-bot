@@ -168,12 +168,12 @@ bot.onText(/^\/lucky/, async (message) => {
         user,
         value: crypto.randomInt(0, users.length * 64),
       }))
-      .sort((a, b) => a.value - b.value)
-      .map(({ user }) => user);
+      .sort((a, b) => a.value - b.value);
 
-    const shuffledList = ["*Shuffled Participants:*"].concat(
+    const shuffledList = ["*Shuffled Participants (with random values):*"].concat(
       shuffledUsers.map(
-        (user, index) => `${index + 1}. [${user.name}](tg://user?id=${user.id})`
+        ({ user, value }, index) =>
+          `${index + 1}. [${user.name}](tg://user?id=${user.id}) - 🎲 ${value}`
       )
     );
 
@@ -182,7 +182,7 @@ bot.onText(/^\/lucky/, async (message) => {
     });
 
     const index = crypto.randomInt(0, shuffledUsers.length);
-    const randomUser = shuffledUsers[index];
+    const randomUser = shuffledUsers[index].user;
 
     await bot.sendMessage(
       message.chat.id,
