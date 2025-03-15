@@ -179,12 +179,46 @@ async function selectRandomWinnerViaPlayingDiceGame({ users, chatId }) {
   return winners[0];
 }
 
+async function selectRandomWinnerViaRandomNumber({ users, chatId }) {
+  const shuffledUsers = users
+    .map((user) => ({
+      user,
+      value: crypto.randomInt(0, users.length * 64),
+    }))
+    .sort((a, b) => a.value - b.value);
+
+  const shuffledList = ["*Shuffled Participants (with random values):*"].concat(
+    shuffledUsers.map(
+      ({ user, value }, index) =>
+        `${index + 1}. [${user.name}](tg://user?id=${user.id}) - 🎲 ${value}`
+    )
+  );
+
+  await bot.sendMessage(chatId, shuffledList.join("\n"), {
+    parse_mode: "Markdown",
+  });
+
+  const index = crypto.randomInt(0, shuffledUsers.length);
+  const randomUser = shuffledUsers[index].user;
+
+  await bot.sendMessage(
+    chatId,
+    `🎯 Selected user with index - ${index + 1} - [${
+      randomUser.name
+    }](tg://user?id=${randomUser.id}) (position ${index + 1})`,
+    {
+      parse_mode: "Markdown",
+    }
+  );
+
+  return randomUser;
+}
+
 bot.onText(/^\/lucky/, async (message) => {
   if (!isMessageFromPerson(message)) return;
 
   try {
     await client.connect();
-    await bot.sendMessage(message.chat.id, "🎲 Rolling the dice of fortune...");
 
     const todaysLucky = await client
       .db(message.chat.id.toString())
@@ -233,40 +267,10 @@ bot.onText(/^\/lucky/, async (message) => {
       parse_mode: "Markdown",
     });
 
-    await bot.sendMessage(message.chat.id, "🔄 Shuffling participants...");
-
-    const shuffledUsers = users
-      .map((user) => ({
-        user,
-        value: crypto.randomInt(0, users.length * 64),
-      }))
-      .sort((a, b) => a.value - b.value);
-
-    const shuffledList = [
-      "*Shuffled Participants (with random values):*",
-    ].concat(
-      shuffledUsers.map(
-        ({ user, value }, index) =>
-          `${index + 1}. [${user.name}](tg://user?id=${user.id}) - 🎲 ${value}`
-      )
-    );
-
-    await bot.sendMessage(message.chat.id, shuffledList.join("\n"), {
-      parse_mode: "Markdown",
+    const randomUser = await selectRandomWinnerViaRandomNumber({
+      users,
+      chatId: message.chat.id,
     });
-
-    const index = crypto.randomInt(0, shuffledUsers.length);
-    const randomUser = shuffledUsers[index].user;
-
-    await bot.sendMessage(
-      message.chat.id,
-      `🎯 Selected user with index - ${index + 1} - [${
-        randomUser.name
-      }](tg://user?id=${randomUser.id}) (position ${index + 1})`,
-      {
-        parse_mode: "Markdown",
-      }
-    );
 
     await bot.sendMessage(message.chat.id, "📊 Updating points...");
 
