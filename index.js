@@ -108,6 +108,77 @@ bot.onText(/^\/register/, async (message) => {
   }
 });
 
+async function selectRandomWinnerViaPlayingDiceGame({ users, chatId }) {
+  async function playDiceOnBehalfOfUsers(users) {
+    const usersMap = users.reduce((map, user) => {
+      map.set(user.name, 0);
+      return map;
+    }, new Map());
+
+    for (const user of users) {
+      const dice = await bot.sendDice(chatId, {
+        disable_notification: true,
+      });
+
+      await bot.sendMessage(
+        chatId,
+        `🎲 [${user.name}](tg://user?id=${user.id}) rolled ${dice.dice.value}`,
+        {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        }
+      );
+
+      usersMap.set(user.name, dice.dice.value);
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    const maxValue = Math.max(...usersMap.values());
+
+    const winnersMap = new Map();
+
+    for (const [userName, value] of usersMap.entries()) {
+      if (value === maxValue) {
+        const user = users.find((u) => u.name === userName);
+
+        winnersMap.set(userName, user);
+      }
+    }
+
+    return users.filter((user) => winnersMap.has(user.name));
+  }
+
+  let winners = users;
+
+  while (winners.length > 1) {
+    winners = await playDiceOnBehalfOfUsers(winners);
+
+    if (winners.length > 1) {
+      await bot.sendMessage(
+        chatId,
+        `🎲 We have a tie between ${winners
+          .map((user) => `[${user.name}](tg://user?id=${user.id})`)
+          .join(", ")}! Rolling again for them...`,
+        {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        }
+      );
+    }
+  }
+
+  await bot.sendMessage(
+    chatId,
+    `🎉 And the winner is... [${winners[0].name}](tg://user?id=${winners[0].id})!`,
+    {
+      parse_mode: "Markdown",
+    }
+  );
+
+  return winners[0];
+}
+
 bot.onText(/^\/lucky/, async (message) => {
   if (!isMessageFromPerson(message)) return;
 
@@ -153,7 +224,8 @@ bot.onText(/^\/lucky/, async (message) => {
 
     const participantsList = ["*Participants:*"].concat(
       users.map(
-        (user) => `• [${user.name}](tg://user?id=${user.id}) - ${user.points} points`
+        (user) =>
+          `• [${user.name}](tg://user?id=${user.id}) - ${user.points} points`
       )
     );
 
@@ -170,7 +242,9 @@ bot.onText(/^\/lucky/, async (message) => {
       }))
       .sort((a, b) => a.value - b.value);
 
-    const shuffledList = ["*Shuffled Participants (with random values):*"].concat(
+    const shuffledList = [
+      "*Shuffled Participants (with random values):*",
+    ].concat(
       shuffledUsers.map(
         ({ user, value }, index) =>
           `${index + 1}. [${user.name}](tg://user?id=${user.id}) - 🎲 ${value}`
@@ -186,7 +260,9 @@ bot.onText(/^\/lucky/, async (message) => {
 
     await bot.sendMessage(
       message.chat.id,
-      `🎯 Selected user with index - ${index + 1} - [${randomUser.name}](tg://user?id=${randomUser.id}) (position ${index + 1})`,
+      `🎯 Selected user with index - ${index + 1} - [${
+        randomUser.name
+      }](tg://user?id=${randomUser.id}) (position ${index + 1})`,
       {
         parse_mode: "Markdown",
       }
