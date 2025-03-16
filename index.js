@@ -9,10 +9,10 @@ import fastify from "fastify";
 import {
   getTodayDate,
   isMessageFromPerson,
-  sendDiceWithRetryAndDelay,
   sendMessageWithRetryAndDelay,
   sendVideoWithRetryAndDelay,
 } from "./utils.js";
+import { getWinnerFromDiceGame } from "./games.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -124,85 +124,6 @@ bot.onText(/^\/register/, async (message) => {
     await client.close();
   }
 });
-
-async function selectRandomWinnerViaPlayingDiceGame({ users, chatId }) {
-  async function playDiceOnBehalfOfUsers(users) {
-    const usersMap = users.reduce((map, user) => {
-      map.set(user.name, 0);
-      return map;
-    }, new Map());
-
-    for (const user of users) {
-      const dice = await sendDiceWithRetryAndDelay({
-        bot: bot,
-        chatId: chatId,
-        options: {
-          disable_notification: true,
-        },
-      });
-
-      await sendMessageWithRetryAndDelay({
-        bot: bot,
-        chatId: chatId,
-        message: `🎲 [${user.name}](tg://user?id=${user.id}) rolled ${dice.dice.value}`,
-        options: {
-          parse_mode: "Markdown",
-          disable_notification: true,
-        },
-      });
-
-      usersMap.set(user.name, dice.dice.value);
-
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-    }
-
-    const maxValue = Math.max(...usersMap.values());
-
-    const winnersMap = new Map();
-
-    for (const [userName, value] of usersMap.entries()) {
-      if (value === maxValue) {
-        const user = users.find((u) => u.name === userName);
-
-        winnersMap.set(userName, user);
-      }
-    }
-
-    return users.filter((user) => winnersMap.has(user.name));
-  }
-
-  let winners = users;
-
-  while (winners.length > 1) {
-    winners = await playDiceOnBehalfOfUsers(winners);
-
-    if (winners.length > 1) {
-      await sendMessageWithRetryAndDelay({
-        bot: bot,
-        chatId: chatId,
-        message: `🎲 We have a tie between ${winners
-          .map((user) => `[${user.name}](tg://user?id=${user.id})`)
-          .join(", ")}! Rolling again for them...`,
-        options: {
-          parse_mode: "Markdown",
-          disable_notification: true,
-        },
-      });
-    }
-  }
-
-  await sendMessageWithRetryAndDelay({
-    bot: bot,
-    chatId: chatId,
-    message: `🎉 And the winner is... [${winners[0].name}](tg://user?id=${winners[0].id})!`,
-    options: {
-      parse_mode: "Markdown",
-      disable_notification: true,
-    },
-  });
-
-  return winners[0];
-}
 
 async function selectRandomWinnerViaRandomNumber({ users, chatId }) {
   const shuffledUsers = users
@@ -320,7 +241,8 @@ bot.onText(/^\/lucky/, async (message) => {
       },
     });
 
-    const randomUser = await selectRandomWinnerViaPlayingDiceGame({
+    const randomUser = await getWinnerFromDiceGame({
+      bot,
       users,
       chatId: message.chat.id,
     });
