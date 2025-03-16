@@ -1,3 +1,5 @@
+import { withRetry } from "./retry";
+
 /**
  * @param {import("node-telegram-bot-api").Message} message
  */
@@ -30,5 +32,10 @@ export async function sendVideoWithRetryAndDelay({
   options,
 }) {
   await wait();
-  return bot.sendVideo(chatId, videoPath, options);
+  return withRetry(() => bot.sendVideo(chatId, videoPath, options));
+}
+
+export async function sendDiceWithRetryAndDelay({bot, chatId, options}) {
+  await wait();
+  return withRetry(() => bot.sendDice(chatId, options));
 }
