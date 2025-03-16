@@ -77,6 +77,7 @@ bot.onText(/^\/register/, async (message) => {
         `[${user.name}](tg://user?id=${user.id}) is already registered!`,
         {
           parse_mode: "Markdown",
+          disable_notification: true,
         }
       );
       return;
@@ -98,6 +99,7 @@ bot.onText(/^\/register/, async (message) => {
       }) successfully registered!`,
       {
         parse_mode: "Markdown",
+        disable_notification: true,
       }
     );
   } catch (error) {
@@ -173,6 +175,7 @@ async function selectRandomWinnerViaPlayingDiceGame({ users, chatId }) {
     `🎉 And the winner is... [${winners[0].name}](tg://user?id=${winners[0].id})!`,
     {
       parse_mode: "Markdown",
+      disable_notification: true,
     }
   );
 
@@ -196,6 +199,7 @@ async function selectRandomWinnerViaRandomNumber({ users, chatId }) {
 
   await bot.sendMessage(chatId, shuffledList.join("\n"), {
     parse_mode: "Markdown",
+    disable_notification: true,
   });
 
   const index = crypto.randomInt(0, shuffledUsers.length);
@@ -208,6 +212,7 @@ async function selectRandomWinnerViaRandomNumber({ users, chatId }) {
     }](tg://user?id=${randomUser.id}) (position ${index + 1})`,
     {
       parse_mode: "Markdown",
+      disable_notification: true,
     }
   );
 
@@ -233,6 +238,7 @@ bot.onText(/^\/lucky/, async (message) => {
         `The luck is over! [${todaysLucky.winner.name}](tg://user?id=${todaysLucky.winner.id}) got it all!`,
         {
           parse_mode: "Markdown",
+          disable_notification: true,
         }
       );
       return;
@@ -247,13 +253,17 @@ bot.onText(/^\/lucky/, async (message) => {
     if (users.length === 0) {
       await bot.sendMessage(message.chat.id, "No participants yet!", {
         parse_mode: "Markdown",
+        disable_notification: true,
       });
       return;
     }
 
     await bot.sendMessage(
       message.chat.id,
-      `🎯 Found ${users.length} participants in the game!`
+      `🎯 Found ${users.length} participants in the game!`,
+      {
+        disable_notification: true,
+      }
     );
 
     const participantsList = ["*Participants:*"].concat(
@@ -265,6 +275,7 @@ bot.onText(/^\/lucky/, async (message) => {
 
     await bot.sendMessage(message.chat.id, participantsList.join("\n"), {
       parse_mode: "Markdown",
+      disable_notification: true,
     });
 
     const randomUser = await selectRandomWinnerViaPlayingDiceGame({
@@ -300,6 +311,7 @@ bot.onText(/^\/lucky/, async (message) => {
         {
           caption: `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today! 🐐🐐🐐`,
           parse_mode: "Markdown",
+          disable_notification: true,
         }
       );
     } else {
@@ -308,6 +320,7 @@ bot.onText(/^\/lucky/, async (message) => {
         `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today!`,
         {
           parse_mode: "Markdown",
+          disable_notification: true,
         }
       );
     }
@@ -319,6 +332,7 @@ bot.onText(/^\/lucky/, async (message) => {
       } points!`,
       {
         parse_mode: "Markdown",
+        disable_notification: true,
       }
     );
   } catch (error) {
@@ -359,6 +373,7 @@ bot.onText(/^\/top/, async (message) => {
 
     await bot.sendMessage(message.chat.id, `${messages.join("\n")}`, {
       parse_mode: "Markdown",
+      disable_notification: true,
     });
   } catch (error) {
     await bot.sendMessage(message.chat.id, "Something went wrong...");
@@ -462,6 +477,7 @@ bot.onText(/^\/chances/, async (message) => {
 
     await bot.sendMessage(message.chat.id, `${messages.join("\n")}`, {
       parse_mode: "Markdown",
+      disable_notification: true,
     });
   } catch (error) {
     await bot.sendMessage(message.chat.id, "Something went wrong...");
