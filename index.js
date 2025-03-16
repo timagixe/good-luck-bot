@@ -10,6 +10,7 @@ import {
   getTodayDate,
   isMessageFromPerson,
   sendMessageWithRetryAndDelay,
+  sendVideoWithRetryAndDelay,
 } from "./utils.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -357,15 +358,16 @@ bot.onText(/^\/lucky/, async (message) => {
           disable_notification: true,
         },
       });
-      await bot.sendVideo(
-        message.chat.id,
-        path.resolve(__dirname, "assets", "goat.mp4"),
-        {
+      await sendVideoWithRetryAndDelay({
+        bot: bot,
+        chatId: message.chat.id,
+        videoPath: path.resolve(__dirname, "assets", "goat.mp4"),
+        options: {
           caption: `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today! 🐐🐐🐐`,
           parse_mode: "Markdown",
           disable_notification: true,
-        }
-      );
+        },
+      });
     } else {
       await sendMessageWithRetryAndDelay({
         bot: bot,

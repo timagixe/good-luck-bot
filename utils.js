@@ -22,3 +22,13 @@ export async function sendMessageWithRetryAndDelay({
   await wait();
   return withRetry(() => bot.sendMessage(chatId, message, options));
 }
+
+export async function sendVideoWithRetryAndDelay({
+  bot,
+  chatId,
+  videoPath,
+  options,
+}) {
+  await wait();
+  return bot.sendVideo(chatId, videoPath, options);
+}
