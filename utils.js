@@ -1,4 +1,4 @@
-import { withRetry } from "./retry";
+import { withRetry } from "./retry.js";
 
 /**
  * @param {import("node-telegram-bot-api").Message} message
