@@ -267,7 +267,7 @@ bot.onText(/^\/lucky/, async (message) => {
       parse_mode: "Markdown",
     });
 
-    const randomUser = await selectRandomWinnerViaRandomNumber({
+    const randomUser = await selectRandomWinnerViaPlayingDiceGame({
       users,
       chatId: message.chat.id,
     });
