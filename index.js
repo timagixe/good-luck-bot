@@ -131,7 +131,7 @@ async function selectRandomWinnerViaPlayingDiceGame({ users, chatId }) {
 
       usersMap.set(user.name, dice.dice.value);
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 5000));
     }
 
     const maxValue = Math.max(...usersMap.values());
