@@ -11,7 +11,7 @@ export function getTodayDate() {
   return new Date().toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" });
 }
 
-async function wait(ms = 3000) {
+export async function wait(ms = 3000) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
