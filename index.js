@@ -6,7 +6,11 @@ import { MongoClient, ServerApiVersion } from "mongodb";
 import TelegramBot from "node-telegram-bot-api";
 import dotenv from "dotenv";
 import fastify from "fastify";
-import { getTodayDate, isMessageFromPerson } from "./utils.js";
+import {
+  getTodayDate,
+  isMessageFromPerson,
+  sendMessageWithRetryAndDelay,
+} from "./utils.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -72,14 +76,15 @@ bot.onText(/^\/register/, async (message) => {
       });
 
     if (user) {
-      await bot.sendMessage(
-        message.chat.id,
-        `[${user.name}](tg://user?id=${user.id}) is already registered!`,
-        {
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: `[${user.name}](tg://user?id=${user.id}) is already registered!`,
+        options: {
           parse_mode: "Markdown",
           disable_notification: true,
-        }
-      );
+        },
+      });
       return;
     }
 
@@ -92,19 +97,27 @@ bot.onText(/^\/register/, async (message) => {
         name: message.from.username || message.from.first_name,
       });
 
-    await bot.sendMessage(
-      message.chat.id,
-      `[${message.from.username || message.from.first_name}](tg://user?id=${
-        message.from.id
-      }) successfully registered!`,
-      {
+    await sendMessageWithRetryAndDelay({
+      bot: bot,
+      chatId: message.chat.id,
+      message: `[${
+        message.from.username || message.from.first_name
+      }](tg://user?id=${message.from.id}) successfully registered!`,
+      options: {
         parse_mode: "Markdown",
         disable_notification: true,
-      }
-    );
+      },
+    });
   } catch (error) {
-    await bot.sendMessage(message.chat.id, "Something went wrong...");
-    await bot.sendMessage(message.chat.id, String(error));
+    await sendMessageWithRetryAndDelay({
+      bot: bot,
+      chatId: message.chat.id,
+      message: `Something went wrong... ${String(error)}`,
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
+    });
   } finally {
     await client.close();
   }
@@ -122,14 +135,15 @@ async function selectRandomWinnerViaPlayingDiceGame({ users, chatId }) {
         disable_notification: true,
       });
 
-      await bot.sendMessage(
-        chatId,
-        `🎲 [${user.name}](tg://user?id=${user.id}) rolled ${dice.dice.value}`,
-        {
+      await sendMessageWithRetryAndDelay({
+        bot: bot,
+        chatId: chatId,
+        message: `🎲 [${user.name}](tg://user?id=${user.id}) rolled ${dice.dice.value}`,
+        options: {
           parse_mode: "Markdown",
           disable_notification: true,
-        }
-      );
+        },
+      });
 
       usersMap.set(user.name, dice.dice.value);
 
@@ -157,27 +171,29 @@ async function selectRandomWinnerViaPlayingDiceGame({ users, chatId }) {
     winners = await playDiceOnBehalfOfUsers(winners);
 
     if (winners.length > 1) {
-      await bot.sendMessage(
-        chatId,
-        `🎲 We have a tie between ${winners
+      await sendMessageWithRetryAndDelay({
+        bot: bot,
+        chatId: chatId,
+        message: `🎲 We have a tie between ${winners
           .map((user) => `[${user.name}](tg://user?id=${user.id})`)
           .join(", ")}! Rolling again for them...`,
-        {
+        options: {
           parse_mode: "Markdown",
           disable_notification: true,
-        }
-      );
+        },
+      });
     }
   }
 
-  await bot.sendMessage(
-    chatId,
-    `🎉 And the winner is... [${winners[0].name}](tg://user?id=${winners[0].id})!`,
-    {
+  await sendMessageWithRetryAndDelay({
+    bot: bot,
+    chatId: chatId,
+    message: `🎉 And the winner is... [${winners[0].name}](tg://user?id=${winners[0].id})!`,
+    options: {
       parse_mode: "Markdown",
       disable_notification: true,
-    }
-  );
+    },
+  });
 
   return winners[0];
 }
@@ -197,24 +213,30 @@ async function selectRandomWinnerViaRandomNumber({ users, chatId }) {
     )
   );
 
-  await bot.sendMessage(chatId, shuffledList.join("\n"), {
-    parse_mode: "Markdown",
-    disable_notification: true,
+  await sendMessageWithRetryAndDelay({
+    bot: bot,
+    chatId: chatId,
+    message: shuffledList.join("\n"),
+    options: {
+      parse_mode: "Markdown",
+      disable_notification: true,
+    },
   });
 
   const index = crypto.randomInt(0, shuffledUsers.length);
   const randomUser = shuffledUsers[index].user;
 
-  await bot.sendMessage(
-    chatId,
-    `🎯 Selected user with index - ${index + 1} - [${
+  await sendMessageWithRetryAndDelay({
+    bot: bot,
+    chatId: chatId,
+    message: `🎯 Selected user with index - ${index + 1} - [${
       randomUser.name
     }](tg://user?id=${randomUser.id}) (position ${index + 1})`,
-    {
+    options: {
       parse_mode: "Markdown",
       disable_notification: true,
-    }
-  );
+    },
+  });
 
   return randomUser;
 }
@@ -233,14 +255,15 @@ bot.onText(/^\/lucky/, async (message) => {
       });
 
     if (todaysLucky) {
-      await bot.sendMessage(
-        message.chat.id,
-        `The luck is over! [${todaysLucky.winner.name}](tg://user?id=${todaysLucky.winner.id}) got it all!`,
-        {
+      await sendMessageWithRetryAndDelay({
+        bot: bot,
+        chatId: message.chat.id,
+        message: `The luck is over! [${todaysLucky.winner.name}](tg://user?id=${todaysLucky.winner.id}) got it all!`,
+        options: {
           parse_mode: "Markdown",
           disable_notification: true,
-        }
-      );
+        },
+      });
       return;
     }
 
@@ -251,20 +274,28 @@ bot.onText(/^\/lucky/, async (message) => {
       .toArray();
 
     if (users.length === 0) {
-      await bot.sendMessage(message.chat.id, "No participants yet!", {
-        parse_mode: "Markdown",
-        disable_notification: true,
+      await sendMessageWithRetryAndDelay({
+        bot: bot,
+        chatId: message.chat.id,
+        message: "No participants yet!",
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
       });
+
       return;
     }
 
-    await bot.sendMessage(
-      message.chat.id,
-      `🎯 Found ${users.length} participants in the game!`,
-      {
+    await sendMessageWithRetryAndDelay({
+      bot: bot,
+      chatId: message.chat.id,
+      message: `🎯 Found ${users.length} participants in the game!`,
+      options: {
+        parse_mode: "Markdown",
         disable_notification: true,
-      }
-    );
+      },
+    });
 
     const participantsList = ["*Participants:*"].concat(
       users.map(
@@ -273,9 +304,14 @@ bot.onText(/^\/lucky/, async (message) => {
       )
     );
 
-    await bot.sendMessage(message.chat.id, participantsList.join("\n"), {
-      parse_mode: "Markdown",
-      disable_notification: true,
+    await sendMessageWithRetryAndDelay({
+      bot: bot,
+      chatId: message.chat.id,
+      message: participantsList.join("\n"),
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
     });
 
     const randomUser = await selectRandomWinnerViaPlayingDiceGame({
@@ -283,7 +319,15 @@ bot.onText(/^\/lucky/, async (message) => {
       chatId: message.chat.id,
     });
 
-    await bot.sendMessage(message.chat.id, "📊 Updating points...");
+    await sendMessageWithRetryAndDelay({
+      bot: bot,
+      chatId: message.chat.id,
+      message: "📊 Updating points...",
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
+    });
 
     await client
       .db(message.chat.id.toString())
@@ -304,7 +348,15 @@ bot.onText(/^\/lucky/, async (message) => {
       .findOne({}, { sort: { points: "desc" } });
 
     if (goatUser.id === randomUser.id) {
-      await bot.sendMessage(message.chat.id, "🎉 We have a GOAT winner!");
+      await sendMessageWithRetryAndDelay({
+        bot: bot,
+        chatId: message.chat.id,
+        message: "🎉 We have a GOAT winner!",
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
       await bot.sendVideo(
         message.chat.id,
         path.resolve(__dirname, "assets", "goat.mp4"),
@@ -315,29 +367,38 @@ bot.onText(/^\/lucky/, async (message) => {
         }
       );
     } else {
-      await bot.sendMessage(
-        message.chat.id,
-        `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today!`,
-        {
+      await sendMessageWithRetryAndDelay({
+        bot: bot,
+        chatId: message.chat.id,
+        message: `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today!`,
+        options: {
           parse_mode: "Markdown",
           disable_notification: true,
-        }
-      );
+        },
+      });
     }
 
-    await bot.sendMessage(
-      message.chat.id,
-      `📈 [${randomUser.name}](tg://user?id=${randomUser.id}) now has ${
-        randomUser.points + 1
-      } points!`,
-      {
+    await sendMessageWithRetryAndDelay({
+      bot: bot,
+      chatId: message.chat.id,
+      message: `📈 [${randomUser.name}](tg://user?id=${
+        randomUser.id
+      }) now has ${randomUser.points + 1} points!`,
+      options: {
         parse_mode: "Markdown",
         disable_notification: true,
-      }
-    );
+      },
+    });
   } catch (error) {
-    await bot.sendMessage(message.chat.id, "❌ Something went wrong...");
-    await bot.sendMessage(message.chat.id, String(error));
+    await sendMessageWithRetryAndDelay({
+      bot: bot,
+      chatId: message.chat.id,
+      message: `❌ Something went wrong... ${String(error)}`,
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
+    });
   } finally {
     await client.close();
   }
@@ -356,8 +417,14 @@ bot.onText(/^\/top/, async (message) => {
       .toArray();
 
     if (users.length === 0) {
-      await bot.sendMessage(message.chat.id, "No participants yet!", {
-        parse_mode: "Markdown",
+      await sendMessageWithRetryAndDelay({
+        bot: bot,
+        chatId: message.chat.id,
+        message: "No participants yet!",
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
       });
       return;
     }
@@ -371,13 +438,25 @@ bot.onText(/^\/top/, async (message) => {
       )
     );
 
-    await bot.sendMessage(message.chat.id, `${messages.join("\n")}`, {
-      parse_mode: "Markdown",
-      disable_notification: true,
+    await sendMessageWithRetryAndDelay({
+      bot: bot,
+      chatId: message.chat.id,
+      message: messages.join("\n"),
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
     });
   } catch (error) {
-    await bot.sendMessage(message.chat.id, "Something went wrong...");
-    await bot.sendMessage(message.chat.id, String(error));
+    await sendMessageWithRetryAndDelay({
+      bot: bot,
+      chatId: message.chat.id,
+      message: `❌ Something went wrong... ${String(error)}`,
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
+    });
   } finally {
     await client.close();
   }
@@ -423,8 +502,14 @@ bot.onText(/^\/chances/, async (message) => {
       .toArray();
 
     if (users.length === 0) {
-      await bot.sendMessage(message.chat.id, "No participants yet!", {
-        parse_mode: "Markdown",
+      await sendMessageWithRetryAndDelay({
+        bot: bot,
+        chatId: message.chat.id,
+        message: "No participants yet!",
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
       });
       return;
     }
@@ -475,13 +560,25 @@ bot.onText(/^\/chances/, async (message) => {
       )
     );
 
-    await bot.sendMessage(message.chat.id, `${messages.join("\n")}`, {
-      parse_mode: "Markdown",
-      disable_notification: true,
+    await sendMessageWithRetryAndDelay({
+      bot: bot,
+      chatId: message.chat.id,
+      message: messages.join("\n"),
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
     });
   } catch (error) {
-    await bot.sendMessage(message.chat.id, "Something went wrong...");
-    await bot.sendMessage(message.chat.id, String(error));
+    await sendMessageWithRetryAndDelay({
+      bot: bot,
+      chatId: message.chat.id,
+      message: `❌ Something went wrong... ${String(error)}`,
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
+    });
   } finally {
     await client.close();
   }
