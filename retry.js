@@ -8,7 +8,7 @@ export async function withRetry(operation, maxRetries = 3) {
       if (error.response?.statusCode === 429) {
         // Get retry after value from headers, default to 1 second if not present
         const retryAfter =
-          parseInt(error.response.headers["retry-after"], 10) || 1;
+          (parseInt(error.response.headers["retry-after"], 10) || 30) + 1;
 
         if (retryCount >= maxRetries) {
           throw new Error(
