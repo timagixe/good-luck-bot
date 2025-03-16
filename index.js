@@ -9,6 +9,7 @@ import fastify from "fastify";
 import {
   getTodayDate,
   isMessageFromPerson,
+  sendDiceWithRetryAndDelay,
   sendMessageWithRetryAndDelay,
   sendVideoWithRetryAndDelay,
 } from "./utils.js";
@@ -132,8 +133,12 @@ async function selectRandomWinnerViaPlayingDiceGame({ users, chatId }) {
     }, new Map());
 
     for (const user of users) {
-      const dice = await bot.sendDice(chatId, {
-        disable_notification: true,
+      const dice = await sendDiceWithRetryAndDelay({
+        bot: bot,
+        chatId: chatId,
+        options: {
+          disable_notification: true,
+        },
       });
 
       await sendMessageWithRetryAndDelay({
