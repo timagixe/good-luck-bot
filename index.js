@@ -12,7 +12,7 @@ import {
   sendMessageWithRetryAndDelay,
   sendVideoWithRetryAndDelay,
 } from "./utils.js";
-import { getWinnerFromDiceGame, getWinnerFromDartsGame } from "./games.js";
+import { getTodaysGame } from "./games.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -217,7 +217,7 @@ bot.onText(/^\/lucky/, async (message) => {
     await sendMessageWithRetryAndDelay({
       bot: bot,
       chatId: message.chat.id,
-      message: `🎯 Found ${users.length} participants in the game!`,
+      message: `👥 Found ${users.length} participants in the game!`,
       options: {
         parse_mode: "Markdown",
         disable_notification: true,
@@ -241,7 +241,10 @@ bot.onText(/^\/lucky/, async (message) => {
       },
     });
 
-    const randomUser = await getWinnerFromDartsGame({
+    const today = new Date();
+    const game = getTodaysGame(today);
+
+    const randomUser = await game.playFn({
       bot,
       users,
       chatId: message.chat.id,
@@ -513,6 +516,49 @@ bot.onText(/^\/chances/, async (message) => {
   }
 });
 
+bot.onText(/^\/schedule/, async (message) => {
+  if (!isMessageFromPerson(message)) return;
+
+  try {
+    const today = new Date();
+
+    const schedule = ["*Games Schedule:*"];
+
+    // Show next 7 days
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      const game = getTodaysGame(date);
+      const formattedDate = date.toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      });
+      schedule.push(`${formattedDate}: ${game.name}`);
+    }
+
+    await sendMessageWithRetryAndDelay({
+      bot,
+      chatId: message.chat.id,
+      message: schedule.join("\n"),
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
+    });
+  } catch (error) {
+    await sendMessageWithRetryAndDelay({
+      bot,
+      chatId: message.chat.id,
+      message: `❌ Something went wrong... ${String(error)}`,
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
+    });
+  }
+});
+
 bot.setMyCommands([
   {
     command: "/register",
@@ -537,5 +583,9 @@ bot.setMyCommands([
   {
     command: "/chances",
     description: "Get user's chances to win",
+  },
+  {
+    command: "/schedule",
+    description: "Get the games schedule",
   },
 ]);
