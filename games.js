@@ -43,6 +43,12 @@ function getGameTypeMessage({ gameType, user, diceResult }) {
       : `${emoji} [${user.name}](tg://user?id=${user.id}) misses!`;
   }
 
+  if (gameType === "football") {
+    return diceResult.dice.value >= 4
+      ? `${emoji} [${user.name}](tg://user?id=${user.id}) scores!`
+      : `${emoji} [${user.name}](tg://user?id=${user.id}) misses!`;
+  }
+
   return `${emoji} [${user.name}](tg://user?id=${user.id}) got ${diceResult.dice.value}`;
 }
 
@@ -308,6 +314,75 @@ export async function getWinnerFromBasketballGame({ users, chatId, bot }) {
         message: `${
           gameTypeToEmoji["basketball"]
         } We have a tie between ${winners
+          .map((user) => `[${user.name}](tg://user?id=${user.id})`)
+          .join(", ")}! Playing again for them...`,
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+    }
+  }
+
+  await sendMessageWithRetryAndDelay({
+    bot: bot,
+    chatId: chatId,
+    message: `🎉 And the winner is... [${winners[0].name}](tg://user?id=${winners[0].id})!`,
+    options: {
+      parse_mode: "Markdown",
+      disable_notification: true,
+    },
+  });
+
+  return winners[0];
+}
+
+async function playFootballOnBehalfOfUsers({ users, bot, chatId }) {
+  const usersResults = await playGameOnBehalfOfUsers({
+    users,
+    bot,
+    chatId,
+    gameType: "football",
+  });
+
+  // value = 1 - missed
+  // value = 2 - missed
+  // value = 3 - missed
+  // value = 4 - scores points
+  // value = 5 - scores points
+  const minValueToScore = 4;
+
+  const winnersMap = new Map();
+
+  for (const [userName, value] of usersResults.entries()) {
+    if (value >= minValueToScore) {
+      const user = users.find((u) => u.name === userName);
+
+      winnersMap.set(userName, user);
+    }
+  }
+
+  const usersWithPoints = users.filter((user) => winnersMap.has(user.name));
+
+  // returns all users if no one scored points
+  return usersWithPoints.length === 0 ? users : usersWithPoints;
+}
+
+export async function getWinnerFromFootballGame({ users, chatId, bot }) {
+  let winners = users;
+
+  while (winners.length > 1) {
+    winners = await playFootballOnBehalfOfUsers({
+      bot,
+      chatId,
+      users: winners,
+    });
+
+    if (winners.length > 1) {
+      await sendMessageWithRetryAndDelay({
+        bot: bot,
+        chatId: chatId,
+        message: `${gameTypeToEmoji["football"]} We have a tie between ${winners
           .map((user) => `[${user.name}](tg://user?id=${user.id})`)
           .join(", ")}! Playing again for them...`,
         options: {
