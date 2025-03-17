@@ -12,7 +12,7 @@ import {
   sendMessageWithRetryAndDelay,
   sendVideoWithRetryAndDelay,
 } from "./utils.js";
-import { getWinnerFromDiceGame } from "./games.js";
+import { getWinnerFromDiceGame, getWinnerFromDartsGame } from "./games.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -241,7 +241,7 @@ bot.onText(/^\/lucky/, async (message) => {
       },
     });
 
-    const randomUser = await getWinnerFromDiceGame({
+    const randomUser = await getWinnerFromDartsGame({
       bot,
       users,
       chatId: message.chat.id,
