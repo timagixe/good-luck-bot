@@ -44,7 +44,7 @@ function getGameTypeMessage({ gameType, user, diceResult }) {
   }
 
   if (gameType === "football") {
-    return diceResult.dice.value >= 4
+    return diceResult.dice.value >= 3
       ? `${emoji} [${user.name}](tg://user?id=${user.id}) scores!`
       : `${emoji} [${user.name}](tg://user?id=${user.id}) misses!`;
   }
@@ -347,10 +347,10 @@ async function playFootballOnBehalfOfUsers({ users, bot, chatId }) {
 
   // value = 1 - missed
   // value = 2 - missed
-  // value = 3 - missed
+  // value = 3 - scores points
   // value = 4 - scores points
   // value = 5 - scores points
-  const minValueToScore = 4;
+  const minValueToScore = 3;
 
   const winnersMap = new Map();
 
