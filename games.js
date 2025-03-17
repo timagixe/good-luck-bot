@@ -118,7 +118,7 @@ async function playDiceOnBehalfOfUsers({ users, bot, chatId }) {
   return users.filter((user) => winnersMap.has(user.name));
 }
 
-export async function getWinnerFromDiceGame({ users, chatId, bot }) {
+async function getWinnerFromDiceGame({ users, chatId, bot }) {
   let winners = users;
 
   while (winners.length > 1) {
@@ -178,7 +178,7 @@ async function playDartsOnBehalfOfUsers({ users, bot, chatId }) {
   return users.filter((user) => winnersMap.has(user.name));
 }
 
-export async function getWinnerFromDartsGame({ users, chatId, bot }) {
+async function getWinnerFromDartsGame({ users, chatId, bot }) {
   let winners = users;
 
   while (winners.length > 1) {
@@ -238,7 +238,7 @@ async function playBowlingOnBehalfOfUsers({ users, bot, chatId }) {
   return users.filter((user) => winnersMap.has(user.name));
 }
 
-export async function getWinnerFromBowlingGame({ users, chatId, bot }) {
+async function getWinnerFromBowlingGame({ users, chatId, bot }) {
   let winners = users;
 
   while (winners.length > 1) {
@@ -303,7 +303,7 @@ async function playBasketballOnBehalfOfUsers({ users, bot, chatId }) {
   return usersWithPoints.length === 0 ? users : usersWithPoints;
 }
 
-export async function getWinnerFromBasketballGame({ users, chatId, bot }) {
+async function getWinnerFromBasketballGame({ users, chatId, bot }) {
   let winners = users;
 
   while (winners.length > 1) {
@@ -374,7 +374,7 @@ async function playFootballOnBehalfOfUsers({ users, bot, chatId }) {
   return usersWithPoints.length === 0 ? users : usersWithPoints;
 }
 
-export async function getWinnerFromFootballGame({ users, chatId, bot }) {
+async function getWinnerFromFootballGame({ users, chatId, bot }) {
   let winners = users;
 
   while (winners.length > 1) {
@@ -410,4 +410,38 @@ export async function getWinnerFromFootballGame({ users, chatId, bot }) {
   });
 
   return winners[0];
+}
+
+const GAMES_FUNCTIONS = {
+  darts: {
+    name: "Darts",
+    playFn: getWinnerFromDartsGame,
+  },
+  bowling: {
+    name: "Bowling",
+    playFn: getWinnerFromBowlingGame,
+  },
+  basketball: {
+    name: "Basketball",
+    playFn: getWinnerFromBasketballGame,
+  },
+  football: {
+    name: "Football",
+    playFn: getWinnerFromFootballGame,
+  },
+  dice: {
+    name: "Dice",
+    playFn: getWinnerFromDiceGame,
+  },
+};
+
+export function getTodaysGame(today = new Date()) {
+  const startOfYear = new Date(today.getFullYear(), 0, 1);
+  const dayOfYear = Math.floor((today - startOfYear) / (24 * 60 * 60 * 1000));
+
+  const gamesList = Object.keys(GAMES_FUNCTIONS);
+  const todaysGameIndex = dayOfYear % gamesList.length;
+  const todaysGame = gamesList[todaysGameIndex];
+
+  return GAMES_FUNCTIONS[todaysGame];
 }
