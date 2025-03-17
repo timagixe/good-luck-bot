@@ -70,6 +70,12 @@ async function playGameOnBehalfOfUsers({ users, bot, chatId, gameType }) {
       },
     });
 
+    console.log("--------------------------------");
+    console.log(`TIME - ${new Date().toISOString()}`);
+    console.log(`PLAYED GAME - ${gameType}`);
+    console.log(`USER - ${user.name}`);
+    console.log(`DICE RESULT - ${diceResult.dice.value}`);
+
     await sendMessageWithRetryAndDelay({
       bot: bot,
       chatId: chatId,
