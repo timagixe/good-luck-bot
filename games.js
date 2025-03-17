@@ -22,20 +22,25 @@ function getGameTypeMessage({ gameType, user, diceResult }) {
   if (gameType === "darts") {
     switch (diceResult.dice.value) {
       case 1:
-        return `${emoji} [${user.name}](tg://user?id=${user.id}) missed`;
+        return `${emoji} [${user.name}](tg://user?id=${user.id}) misses!`;
       default:
-        return `${emoji} [${user.name}](tg://user?id=${user.id}) scores ${diceResult.dice.value}`;
+        return `${emoji} [${user.name}](tg://user?id=${user.id}) scores ${diceResult.dice.value}!`;
     }
   }
 
   if (gameType === "bowling") {
-    return `${emoji} [${user.name}](tg://user?id=${user.id}) scores ${diceResult.dice.value}`;
+    switch (diceResult.dice.value) {
+      case 1:
+        return `${emoji} [${user.name}](tg://user?id=${user.id}) misses!`;
+      default:
+        return `${emoji} [${user.name}](tg://user?id=${user.id}) scores ${diceResult.dice.value}!`;
+    }
   }
 
   if (gameType === "basketball") {
     return diceResult.dice.value >= 4
-      ? `${emoji} [${user.name}](tg://user?id=${user.id}) shoots and scores!`
-      : `${emoji} [${user.name}](tg://user?id=${user.id}) shoots and misses!`;
+      ? `${emoji} [${user.name}](tg://user?id=${user.id}) scores!`
+      : `${emoji} [${user.name}](tg://user?id=${user.id}) misses!`;
   }
 
   return `${emoji} [${user.name}](tg://user?id=${user.id}) got ${diceResult.dice.value}`;
