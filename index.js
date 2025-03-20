@@ -421,101 +421,6 @@ bot.onText(/^\/progress/, async (message) => {
   );
 });
 
-bot.onText(/^\/chances/, async (message) => {
-  if (!isMessageFromPerson(message)) return;
-
-  try {
-    await client.connect();
-
-    const users = await client
-      .db(message.chat.id.toString())
-      .collection("participants")
-      .find({})
-      .toArray();
-
-    if (users.length === 0) {
-      await sendMessageWithRetryAndDelay({
-        bot: bot,
-        chatId: message.chat.id,
-        message: "No participants yet!",
-        options: {
-          parse_mode: "Markdown",
-          disable_notification: true,
-        },
-      });
-      return;
-    }
-
-    const now = new Date();
-    const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
-    const remainingDays = Math.ceil((endOfYear - now) / (1000 * 60 * 60 * 24));
-    const simulations = 10000;
-    const winCounts = {};
-
-    for (let sim = 0; sim < simulations; sim++) {
-      const points = {
-        ...users.reduce(
-          (acc, user) => ({ ...acc, [user.id]: user.points }),
-          {}
-        ),
-      };
-
-      for (let day = 0; day < remainingDays; day++) {
-        const shuffledUsers = users
-          .map((user) => ({
-            user,
-            value: crypto.randomInt(0, users.length * 64),
-          }))
-          .sort((a, b) => a.value - b.value)
-          .map(({ user }) => user);
-
-        const index = crypto.randomInt(0, shuffledUsers.length);
-        const randomUser = shuffledUsers[index];
-        points[randomUser.id] = (points[randomUser.id] || 0) + 1;
-      }
-
-      const winner = Object.keys(points).reduce((a, b) =>
-        points[a] > points[b] ? a : b
-      );
-      winCounts[winner] = (winCounts[winner] || 0) + 1;
-    }
-
-    const messages = [
-      `*Winning Chances (Monte Carlo Simulation, 10,000 runs for ${remainingDays} remaining days):*`,
-    ].concat(
-      users.map(
-        (user, index) =>
-          `${index + 1}. [${user.name}](tg://user?id=${user.id}) - ${(
-            ((winCounts[user.id] || 0) / simulations) *
-            100
-          ).toFixed(2)}%`
-      )
-    );
-
-    await sendMessageWithRetryAndDelay({
-      bot: bot,
-      chatId: message.chat.id,
-      message: messages.join("\n"),
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-  } catch (error) {
-    await sendMessageWithRetryAndDelay({
-      bot: bot,
-      chatId: message.chat.id,
-      message: `❌ Something went wrong... ${String(error)}`,
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-  } finally {
-    await client.close();
-  }
-});
-
 bot.onText(/^\/schedule/, async (message) => {
   if (!isMessageFromPerson(message)) return;
 
@@ -579,10 +484,6 @@ bot.setMyCommands([
   {
     command: "/progress",
     description: "Get year's progress",
-  },
-  {
-    command: "/chances",
-    description: "Get user's chances to win",
   },
   {
     command: "/schedule",
