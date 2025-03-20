@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import {
   sendDiceWithRetryAndDelay,
   sendMessageWithRetryAndDelay,
