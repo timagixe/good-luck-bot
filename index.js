@@ -125,49 +125,6 @@ bot.onText(/^\/register/, async (message) => {
   }
 });
 
-async function selectRandomWinnerViaRandomNumber({ users, chatId }) {
-  const shuffledUsers = users
-    .map((user) => ({
-      user,
-      value: crypto.randomInt(0, users.length * 64),
-    }))
-    .sort((a, b) => a.value - b.value);
-
-  const shuffledList = ["*Shuffled Participants (with random values):*"].concat(
-    shuffledUsers.map(
-      ({ user, value }, index) =>
-        `${index + 1}. [${user.name}](tg://user?id=${user.id}) - 🎲 ${value}`
-    )
-  );
-
-  await sendMessageWithRetryAndDelay({
-    bot: bot,
-    chatId: chatId,
-    message: shuffledList.join("\n"),
-    options: {
-      parse_mode: "Markdown",
-      disable_notification: true,
-    },
-  });
-
-  const index = crypto.randomInt(0, shuffledUsers.length);
-  const randomUser = shuffledUsers[index].user;
-
-  await sendMessageWithRetryAndDelay({
-    bot: bot,
-    chatId: chatId,
-    message: `🎯 Selected user with index - ${index + 1} - [${
-      randomUser.name
-    }](tg://user?id=${randomUser.id}) (position ${index + 1})`,
-    options: {
-      parse_mode: "Markdown",
-      disable_notification: true,
-    },
-  });
-
-  return randomUser;
-}
-
 bot.onText(/^\/lucky/, async (message) => {
   if (!isMessageFromPerson(message)) return;
 
