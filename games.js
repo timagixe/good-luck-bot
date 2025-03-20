@@ -412,29 +412,6 @@ async function getWinnerFromFootballGame({ users, chatId, bot }) {
   return winners[0];
 }
 
-const GAMES_FUNCTIONS = {
-  darts: {
-    name: "Darts",
-    playFn: getWinnerFromDartsGame,
-  },
-  bowling: {
-    name: "Bowling",
-    playFn: getWinnerFromBowlingGame,
-  },
-  basketball: {
-    name: "Basketball",
-    playFn: getWinnerFromBasketballGame,
-  },
-  football: {
-    name: "Football",
-    playFn: getWinnerFromFootballGame,
-  },
-  dice: {
-    name: "Dice",
-    playFn: getWinnerFromDiceGame,
-  },
-};
-
 async function selectRandomUserViaAscendingSorting({ users, chatId, bot }) {
   const shuffledUsers = users
     .map((user) => ({
@@ -520,6 +497,37 @@ async function selectRandomUserViaDescendingSorting({ users, chatId, bot }) {
 
   return randomUser;
 }
+
+const GAMES_FUNCTIONS = {
+  darts: {
+    name: "Darts",
+    playFn: getWinnerFromDartsGame,
+  },
+  ascendingRandomizer: {
+    name: "Asc Randomizer",
+    playFn: selectRandomUserViaAscendingSorting,
+  },
+  bowling: {
+    name: "Bowling",
+    playFn: getWinnerFromBowlingGame,
+  },
+  basketball: {
+    name: "Basketball",
+    playFn: getWinnerFromBasketballGame,
+  },
+  football: {
+    name: "Football",
+    playFn: getWinnerFromFootballGame,
+  },
+  descendingRandomizer: {
+    name: "Desc Randomizer",
+    playFn: selectRandomUserViaDescendingSorting,
+  },
+  dice: {
+    name: "Dice",
+    playFn: getWinnerFromDiceGame,
+  },
+};
 
 export function getTodaysGame(today = new Date()) {
   const startOfYear = new Date(today.getFullYear(), 0, 1);
