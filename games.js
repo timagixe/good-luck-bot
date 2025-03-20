@@ -435,7 +435,7 @@ const GAMES_FUNCTIONS = {
   },
 };
 
-async function selectRandomWinnerViaRandomNumber({ users, chatId }) {
+async function selectRandomWinnerViaRandomNumber({ users, chatId, bot }) {
   const shuffledUsers = users
     .map((user) => ({
       user,
