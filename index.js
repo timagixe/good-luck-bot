@@ -151,11 +151,19 @@ bot.onText(/^\/lucky/, async (message) => {
       return;
     }
 
-    const users = await client
-      .db(message.chat.id.toString())
-      .collection("participants")
-      .find({})
-      .toArray();
+    const users = (
+      await client
+        .db(message.chat.id.toString())
+        .collection("participants")
+        .find({})
+        .toArray()
+    )
+      .map((user) => ({
+        user,
+        value: crypto.randomInt(0, users.length * 64),
+      }))
+      .sort((a, b) => a.value - b.value)
+      .map(({ user }) => user);
 
     if (users.length === 0) {
       await sendMessageWithRetryAndDelay({
