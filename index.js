@@ -158,9 +158,9 @@ bot.onText(/^\/lucky/, async (message) => {
         .find({})
         .toArray()
     )
-      .map((user) => ({
+      .map((user, _index, array) => ({
         user,
-        value: crypto.randomInt(0, users.length * 64),
+        value: crypto.randomInt(0, array.length * 64),
       }))
       .sort((a, b) => a.value - b.value)
       .map(({ user }) => user);
