@@ -14,6 +14,7 @@ import {
 } from "./utils.js";
 import { getTodaysGame } from "./games.js";
 import { findMissingResults } from "./find-missing-results.js";
+import { findWinnerDates } from "./find-winner-dates.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -456,7 +457,9 @@ bot.onText(/^\/missing/, async (message) => {
     await sendMessageWithRetryAndDelay({
       bot,
       chatId: message.chat.id,
-      message: `📅 *Missing dates found:*\n${missingResults.map(date => `• ${date}`).join("\n")}`,
+      message: `📅 *Missing dates found:*\n${missingResults
+        .map((date) => `• ${date}`)
+        .join("\n")}`,
       options: {
         parse_mode: "Markdown",
         disable_notification: true,
@@ -475,10 +478,7 @@ bot.onText(/^\/missing/, async (message) => {
     });
 
     // Get all participants
-    const users = await database
-      .collection("participants")
-      .find({})
-      .toArray();
+    const users = await database.collection("participants").find({}).toArray();
 
     if (users.length === 0) {
       await sendMessageWithRetryAndDelay({
@@ -538,18 +538,18 @@ bot.onText(/^\/missing/, async (message) => {
       .collection("participants")
       .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
 
-    await database
-      .collection("results")
-      .insertOne({
-        date: firstMissingDate,
-        winner: randomUser,
-      });
+    await database.collection("results").insertOne({
+      date: firstMissingDate,
+      winner: randomUser,
+    });
 
     // Announce the winner and their new points
     await sendMessageWithRetryAndDelay({
       bot,
       chatId: message.chat.id,
-      message: `🏆 *Winner:* [${randomUser.name}](tg://user?id=${randomUser.id})\n📈 *New points:* ${randomUser.points + 1}`,
+      message: `🏆 *Winner:* [${randomUser.name}](tg://user?id=${
+        randomUser.id
+      })\n📈 *New points:* ${randomUser.points + 1}`,
       options: {
         parse_mode: "Markdown",
         disable_notification: true,
@@ -566,7 +566,9 @@ bot.onText(/^\/missing/, async (message) => {
     const finalPointsList = ["📊 *Final points after update:*"].concat(
       updatedUsers.map(
         (user, index) =>
-          `${index + 1}. [${user.name}](tg://user?id=${user.id}) - ${user.points} points`
+          `${index + 1}. [${user.name}](tg://user?id=${user.id}) - ${
+            user.points
+          } points`
       )
     );
 
@@ -579,7 +581,6 @@ bot.onText(/^\/missing/, async (message) => {
         disable_notification: true,
       },
     });
-
   } catch (error) {
     await sendMessageWithRetryAndDelay({
       bot,
@@ -593,6 +594,26 @@ bot.onText(/^\/missing/, async (message) => {
   } finally {
     await client.close();
   }
+});
+
+bot.onText(/^\/steal/, async (message) => {
+  if (!isMessageFromPerson(message)) return;
+
+  try {
+    await client.connect();
+
+    const database = client.db(message.chat.id.toString());
+    const resultsCollection = database.collection("results");
+    const winnerDates = await findWinnerDates(resultsCollection);
+
+    await sendMessageWithRetryAndDelay({
+      bot,
+      chatId: message.chat.id,
+      message: `🏆 *Winner dates:*\n${winnerDates
+        .map((result) => `• ${result.date} - ${result.winner.name}`)
+        .join("\n")}`,
+    });
+  } catch (error) {}
 });
 
 bot.setMyCommands([
@@ -623,5 +644,9 @@ bot.setMyCommands([
   {
     command: "/missing",
     description: "Get missing results",
+  },
+  {
+    command: "/steal",
+    description: "Steal points from another participant",
   },
 ]);
