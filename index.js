@@ -44,6 +44,46 @@ const {
   URL,
 } = process.env;
 
+// Command lock mechanism
+const commandLocks = new Map();
+
+async function acquireLock(chatId) {
+  if (commandLocks.get(chatId)) {
+    return false;
+  }
+  commandLocks.set(chatId, true);
+  return true;
+}
+
+function releaseLock(chatId) {
+  commandLocks.delete(chatId);
+}
+
+async function executeCommand(message, commandFn) {
+  if (!isMessageFromPerson(message)) return;
+
+  const chatId = message.chat.id;
+  const lockAcquired = await acquireLock(chatId);
+
+  if (!lockAcquired) {
+    bot.sendMessage(
+      chatId,
+      "⏳ Another command is being processed. Please wait...",
+      {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      }
+    );
+    return;
+  }
+
+  try {
+    await commandFn(message);
+  } finally {
+    releaseLock(chatId);
+  }
+}
+
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 // bot.setWebHook(`${URL}/bot${TELEGRAM_BOT_TOKEN}`);
 
