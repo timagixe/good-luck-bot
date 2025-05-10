@@ -657,12 +657,151 @@ bot.onText(/^\/steal/, async (message) => {
       const resultsCollection = database.collection("results");
       const winnerDates = await findWinnerDates(resultsCollection);
 
+      if (winnerDates.length === 0) {
+        await sendMessageWithRetryAndDelay({
+          bot,
+          chatId: message.chat.id,
+          message: "No winners found to steal from!",
+          options: {
+            parse_mode: "Markdown",
+            disable_notification: true,
+          },
+        });
+        return;
+      }
+
+      // List all winner dates
       await sendMessageWithRetryAndDelay({
         bot,
         chatId: message.chat.id,
         message: `🏆 *Winner dates:*\n${winnerDates
           .map((result) => `• ${result.date} - ${result.winner.name}`)
           .join("\n")}`,
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+
+      const firstWinner = winnerDates[0];
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: `🎯 *Selected winner to steal from:* ${firstWinner.winner.name} (${firstWinner.date})`,
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+
+      // Get all participants
+      const users = shuffleUsers(
+        await database.collection("participants").find({}).toArray()
+      );
+
+      if (users.length === 0) {
+        await sendMessageWithRetryAndDelay({
+          bot,
+          chatId: message.chat.id,
+          message: "No participants found!",
+          options: {
+            parse_mode: "Markdown",
+            disable_notification: true,
+          },
+        });
+        return;
+      }
+
+      // List all participants and their current points
+      const participantsList = ["👥 *Current participants and points:*"].concat(
+        users.map(
+          (user) =>
+            `• [${user.name}](tg://user?id=${user.id}) - ${user.points} points`
+        )
+      );
+
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: participantsList.join("\n"),
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+
+      // Parse the date and get the game
+      const [day, month, year] = firstWinner.date.split(".");
+      const gameDate = new Date(year, month - 1, day);
+      const game = getTodaysGame(gameDate);
+
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: `🎮 *Game for ${firstWinner.date}:* ${game.name}`,
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+
+      // Execute the game
+      const newWinner = await game.playFn({
+        bot,
+        users,
+        chatId: message.chat.id,
+      });
+
+      // Update points - deduct from old winner and add to new winner
+      await database
+        .collection("participants")
+        .updateOne({ id: firstWinner.winner.id }, { $inc: { points: -1 } });
+
+      await database
+        .collection("participants")
+        .updateOne({ id: newWinner.id }, { $inc: { points: 1 } });
+
+      // Update the result in the database
+      await database.collection("results").updateOne(
+        { date: firstWinner.date },
+        {
+          $set: {
+            winner: newWinner,
+          },
+        }
+      );
+
+      // Announce the changes
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: `🔄 *Points have been stolen!*\n\n🏆 *New winner:* [${newWinner.name}](tg://user?id=${newWinner.id})\n📉 *Previous winner:* [${firstWinner.winner.name}](tg://user?id=${firstWinner.winner.id})`,
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+
+      // Get updated points for all participants
+      const updatedUsers = await database
+        .collection("participants")
+        .find({}, { sort: { points: "desc" } })
+        .toArray();
+
+      // Show final points table
+      const finalPointsList = ["📊 *Final points after update:*"].concat(
+        updatedUsers.map(
+          (user, index) =>
+            `${index + 1}. [${user.name}](tg://user?id=${user.id}) - ${
+              user.points
+            } points`
+        )
+      );
+
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: finalPointsList.join("\n"),
         options: {
           parse_mode: "Markdown",
           disable_notification: true,
@@ -678,6 +817,8 @@ bot.onText(/^\/steal/, async (message) => {
           disable_notification: true,
         },
       });
+    } finally {
+      await client.close();
     }
   });
 });
