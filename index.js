@@ -748,7 +748,9 @@ bot.onText(/^\/steal/, async (message) => {
       // Execute the game
       const newWinner = await game.playFn({
         bot,
-        users,
+        users: users.filter(
+          (user) => user.name !== "YuraCh" && user.name !== "makonix"
+        ),
         chatId: message.chat.id,
       });
 
