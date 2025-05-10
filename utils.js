@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { withRetry } from "./retry.js";
 
 /**
@@ -38,4 +39,19 @@ export async function sendVideoWithRetryAndDelay({
 export async function sendDiceWithRetryAndDelay({bot, chatId, options}) {
   await wait();
   return withRetry(() => bot.sendDice(chatId, options));
+}
+
+/**
+ * Shuffles an array of users using crypto.randomInt for randomization
+ * @param {Array} users - Array of user objects to shuffle
+ * @returns {Array} - Shuffled array of users
+ */
+export function shuffleUsers(users) {
+  return users
+    .map((user, _index, array) => ({
+      user,
+      value: crypto.randomInt(0, array.length * 64),
+    }))
+    .sort((a, b) => a.value - b.value)
+    .map(({ user }) => user);
 }
