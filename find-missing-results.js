@@ -1,14 +1,5 @@
-import dotenv from "dotenv";
-
-dotenv.config();
-
-export async function findMissingResults(chatId, client) {
+export async function findMissingResults(resultsCollection) {
   try {
-    await client.connect();
-
-    const database = client.db(chatId.toString());
-    const resultsCollection = database.collection("results");
-
     // Get all dates from 2025 up to today
     const startDate = new Date("2025-01-01");
     const endDate = new Date(); // Use today as end date
@@ -43,7 +34,5 @@ export async function findMissingResults(chatId, client) {
   } catch (error) {
     console.error("Error finding missing results:", error);
     throw error;
-  } finally {
-    await client.close();
   }
 }
