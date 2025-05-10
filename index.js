@@ -432,19 +432,105 @@ bot.onText(/^\/schedule/, async (message) => {
 bot.onText(/^\/missing/, async (message) => {
   if (!isMessageFromPerson(message)) return;
 
-  const missingResults = await findMissingResults(message.chat.id, client);
+  try {
+    await client.connect();
 
-  await sendMessageWithRetryAndDelay({
-    bot,
-    chatId: message.chat.id,
-    message: `Missing results found! ${
-      missingResults.length
-    }: ${missingResults.join(", ")}`,
-    options: {
-      parse_mode: "Markdown",
-      disable_notification: true,
-    },
-  });
+    const database = client.db(message.chat.id.toString());
+    const resultsCollection = database.collection("results");
+    const missingResults = await findMissingResults(resultsCollection);
+
+    if (missingResults.length === 0) {
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: "No missing results found!",
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+      return;
+    }
+
+    const firstMissingDate = missingResults[0];
+    await sendMessageWithRetryAndDelay({
+      bot,
+      chatId: message.chat.id,
+      message: `Found missing date: ${firstMissingDate}. Executing game for this date...`,
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
+    });
+
+    // Get all participants
+    const users = await client
+      .db(message.chat.id.toString())
+      .collection("participants")
+      .find({})
+      .toArray();
+
+    if (users.length === 0) {
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: "No participants found!",
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+      return;
+    }
+
+    // Parse the missing date
+    const [day, month, year] = firstMissingDate.split(".");
+    const gameDate = new Date(year, month - 1, day);
+    const game = getTodaysGame(gameDate);
+
+    // Execute the game
+    const randomUser = await game.playFn({
+      bot,
+      users,
+      chatId: message.chat.id,
+    });
+
+    // Update points and save result
+    await client
+      .db(message.chat.id.toString())
+      .collection("participants")
+      .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
+
+    await client
+      .db(message.chat.id.toString())
+      .collection("results")
+      .insertOne({
+        date: firstMissingDate,
+        winner: randomUser,
+      });
+
+    await sendMessageWithRetryAndDelay({
+      bot,
+      chatId: message.chat.id,
+      message: `✅ Game completed for ${firstMissingDate}! Winner: [${randomUser.name}](tg://user?id=${randomUser.id})`,
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
+    });
+  } catch (error) {
+    await sendMessageWithRetryAndDelay({
+      bot,
+      chatId: message.chat.id,
+      message: `Error: ${error.message}`,
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
+    });
+  } finally {
+    await client.close();
+  }
 });
 
 bot.setMyCommands([
