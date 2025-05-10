@@ -344,11 +344,13 @@ bot.onText(/^\/top/, async (message) => {
     try {
       await client.connect();
 
-      const users = await client
-        .db(message.chat.id.toString())
-        .collection("participants")
-        .find({}, { sort: { points: "desc" } })
-        .toArray();
+      const users = (
+        await client
+          .db(message.chat.id.toString())
+          .collection("participants")
+          .find({}, { sort: { points: "desc" } })
+          .toArray()
+      ).filter((user) => user.name !== "YuraCh" && user.name !== "makonix");
 
       if (users.length === 0) {
         await sendMessageWithRetryAndDelay({
