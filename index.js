@@ -452,11 +452,22 @@ bot.onText(/^\/missing/, async (message) => {
       return;
     }
 
+    // List all missing dates
+    await sendMessageWithRetryAndDelay({
+      bot,
+      chatId: message.chat.id,
+      message: `📅 *Missing dates found:*\n${missingResults.map(date => `• ${date}`).join("\n")}`,
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
+    });
+
     const firstMissingDate = missingResults[0];
     await sendMessageWithRetryAndDelay({
       bot,
       chatId: message.chat.id,
-      message: `Found missing date: ${firstMissingDate}. Executing game for this date...`,
+      message: `🎯 *Selected date for execution:* ${firstMissingDate}`,
       options: {
         parse_mode: "Markdown",
         disable_notification: true,
@@ -464,8 +475,7 @@ bot.onText(/^\/missing/, async (message) => {
     });
 
     // Get all participants
-    const users = await client
-      .db(message.chat.id.toString())
+    const users = await database
       .collection("participants")
       .find({})
       .toArray();
@@ -483,10 +493,38 @@ bot.onText(/^\/missing/, async (message) => {
       return;
     }
 
-    // Parse the missing date
+    // List all participants and their current points
+    const participantsList = ["👥 *Current participants and points:*"].concat(
+      users.map(
+        (user) =>
+          `• [${user.name}](tg://user?id=${user.id}) - ${user.points} points`
+      )
+    );
+
+    await sendMessageWithRetryAndDelay({
+      bot,
+      chatId: message.chat.id,
+      message: participantsList.join("\n"),
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
+    });
+
+    // Parse the missing date and get the game
     const [day, month, year] = firstMissingDate.split(".");
     const gameDate = new Date(year, month - 1, day);
     const game = getTodaysGame(gameDate);
+
+    await sendMessageWithRetryAndDelay({
+      bot,
+      chatId: message.chat.id,
+      message: `🎮 *Game for ${firstMissingDate}:* ${game.name}`,
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
+    });
 
     // Execute the game
     const randomUser = await game.playFn({
@@ -496,33 +534,57 @@ bot.onText(/^\/missing/, async (message) => {
     });
 
     // Update points and save result
-    await client
-      .db(message.chat.id.toString())
+    await database
       .collection("participants")
       .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
 
-    await client
-      .db(message.chat.id.toString())
+    await database
       .collection("results")
       .insertOne({
         date: firstMissingDate,
         winner: randomUser,
       });
 
+    // Announce the winner and their new points
     await sendMessageWithRetryAndDelay({
       bot,
       chatId: message.chat.id,
-      message: `✅ Game completed for ${firstMissingDate}! Winner: [${randomUser.name}](tg://user?id=${randomUser.id})`,
+      message: `🏆 *Winner:* [${randomUser.name}](tg://user?id=${randomUser.id})\n📈 *New points:* ${randomUser.points + 1}`,
       options: {
         parse_mode: "Markdown",
         disable_notification: true,
       },
     });
+
+    // Get updated points for all participants
+    const updatedUsers = await database
+      .collection("participants")
+      .find({}, { sort: { points: "desc" } })
+      .toArray();
+
+    // Show final points table
+    const finalPointsList = ["📊 *Final points after update:*"].concat(
+      updatedUsers.map(
+        (user, index) =>
+          `${index + 1}. [${user.name}](tg://user?id=${user.id}) - ${user.points} points`
+      )
+    );
+
+    await sendMessageWithRetryAndDelay({
+      bot,
+      chatId: message.chat.id,
+      message: finalPointsList.join("\n"),
+      options: {
+        parse_mode: "Markdown",
+        disable_notification: true,
+      },
+    });
+
   } catch (error) {
     await sendMessageWithRetryAndDelay({
       bot,
       chatId: message.chat.id,
-      message: `Error: ${error.message}`,
+      message: `❌ Error: ${error.message}`,
       options: {
         parse_mode: "Markdown",
         disable_notification: true,
