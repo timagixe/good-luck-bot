@@ -13,7 +13,7 @@ import {
   sendVideoWithRetryAndDelay,
 } from "./utils.js";
 import { getTodaysGame } from "./games.js";
-
+import { findMissingResults } from "./find-missing-results.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -43,8 +43,8 @@ const {
   URL,
 } = process.env;
 
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN);
-bot.setWebHook(`${URL}/bot${TELEGRAM_BOT_TOKEN}`);
+const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
+// bot.setWebHook(`${URL}/bot${TELEGRAM_BOT_TOKEN}`);
 
 server.post(`/bot${TELEGRAM_BOT_TOKEN}`, async (request, reply) => {
   const { body } = request;
@@ -429,6 +429,24 @@ bot.onText(/^\/schedule/, async (message) => {
   }
 });
 
+bot.onText(/^\/missing/, async (message) => {
+  if (!isMessageFromPerson(message)) return;
+
+  const missingResults = await findMissingResults(message.chat.id, client);
+
+  await sendMessageWithRetryAndDelay({
+    bot,
+    chatId: message.chat.id,
+    message: `Missing results found! ${
+      missingResults.length
+    }: ${missingResults.join(", ")}`,
+    options: {
+      parse_mode: "Markdown",
+      disable_notification: true,
+    },
+  });
+});
+
 bot.setMyCommands([
   {
     command: "/register",
@@ -453,5 +471,9 @@ bot.setMyCommands([
   {
     command: "/schedule",
     description: "Get the games schedule",
+  },
+  {
+    command: "/missing",
+    description: "Get missing results",
   },
 ]);
