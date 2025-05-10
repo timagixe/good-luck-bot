@@ -84,8 +84,8 @@ async function executeCommand(message, commandFn) {
   }
 }
 
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
-// bot.setWebHook(`${URL}/bot${TELEGRAM_BOT_TOKEN}`);
+const bot = new TelegramBot(TELEGRAM_BOT_TOKEN);
+bot.setWebHook(`${URL}/bot${TELEGRAM_BOT_TOKEN}`);
 
 server.post(`/bot${TELEGRAM_BOT_TOKEN}`, async (request, reply) => {
   const { body } = request;
