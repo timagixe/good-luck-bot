@@ -578,7 +578,9 @@ bot.onText(/^\/missing/, async (message) => {
       // Execute the game
       const randomUser = await game.playFn({
         bot,
-        users,
+        users: users.filter(
+          (user) => user.name !== "YuraCh" && user.name !== "makonix"
+        ),
         chatId: message.chat.id,
       });
 
