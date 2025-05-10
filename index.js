@@ -198,7 +198,7 @@ bot.onText(/^\/lucky/, async (message) => {
           .collection("participants")
           .find({})
           .toArray()
-      );
+      ).filter((user) => user.name !== "YuraCh" && user.name !== "makonix");
 
       if (users.length === 0) {
         await sendMessageWithRetryAndDelay({
@@ -526,7 +526,7 @@ bot.onText(/^\/missing/, async (message) => {
       // Get all participants
       const users = shuffleUsers(
         await database.collection("participants").find({}).toArray()
-      );
+      ).filter((user) => user.name !== "YuraCh" && user.name !== "makonix");
 
       if (users.length === 0) {
         await sendMessageWithRetryAndDelay({
@@ -577,9 +577,7 @@ bot.onText(/^\/missing/, async (message) => {
       // Execute the game
       const randomUser = await game.playFn({
         bot,
-        users: users.filter(
-          (user) => user.name !== "YuraCh" && user.name !== "makonix"
-        ),
+        users,
         chatId: message.chat.id,
       });
 
