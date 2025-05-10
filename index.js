@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
@@ -11,6 +10,7 @@ import {
   isMessageFromPerson,
   sendMessageWithRetryAndDelay,
   sendVideoWithRetryAndDelay,
+  shuffleUsers,
 } from "./utils.js";
 import { getTodaysGame } from "./games.js";
 import { findMissingResults } from "./find-missing-results.js";
@@ -193,19 +193,13 @@ bot.onText(/^\/lucky/, async (message) => {
         return;
       }
 
-      const users = (
+      const users = shuffleUsers(
         await client
           .db(message.chat.id.toString())
           .collection("participants")
           .find({})
           .toArray()
-      )
-        .map((user, _index, array) => ({
-          user,
-          value: crypto.randomInt(0, array.length * 64),
-        }))
-        .sort((a, b) => a.value - b.value)
-        .map(({ user }) => user);
+      );
 
       if (users.length === 0) {
         await sendMessageWithRetryAndDelay({
@@ -531,10 +525,9 @@ bot.onText(/^\/missing/, async (message) => {
       });
 
       // Get all participants
-      const users = await database
-        .collection("participants")
-        .find({})
-        .toArray();
+      const users = shuffleUsers(
+        await database.collection("participants").find({}).toArray()
+      );
 
       if (users.length === 0) {
         await sendMessageWithRetryAndDelay({
