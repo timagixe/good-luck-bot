@@ -78,7 +78,7 @@ async function executeCommand(message, commandFn) {
   }
 
   try {
-    await commandFn(message);
+    await commandFn();
   } finally {
     releaseLock(chatId);
   }
@@ -167,237 +167,241 @@ bot.onText(/^\/register/, async (message) => {
 });
 
 bot.onText(/^\/lucky/, async (message) => {
-  if (!isMessageFromPerson(message)) return;
+  executeCommand(message, async () => {
+    if (!isMessageFromPerson(message)) return;
 
-  try {
-    await client.connect();
+    try {
+      await client.connect();
 
-    const todaysLucky = await client
-      .db(message.chat.id.toString())
-      .collection("results")
-      .findOne({
-        date: getTodayDate(),
-      });
+      const todaysLucky = await client
+        .db(message.chat.id.toString())
+        .collection("results")
+        .findOne({
+          date: getTodayDate(),
+        });
 
-    if (todaysLucky) {
+      if (todaysLucky) {
+        await sendMessageWithRetryAndDelay({
+          bot: bot,
+          chatId: message.chat.id,
+          message: `The luck is over! [${todaysLucky.winner.name}](tg://user?id=${todaysLucky.winner.id}) got it all!`,
+          options: {
+            parse_mode: "Markdown",
+            disable_notification: true,
+          },
+        });
+        return;
+      }
+
+      const users = (
+        await client
+          .db(message.chat.id.toString())
+          .collection("participants")
+          .find({})
+          .toArray()
+      )
+        .map((user, _index, array) => ({
+          user,
+          value: crypto.randomInt(0, array.length * 64),
+        }))
+        .sort((a, b) => a.value - b.value)
+        .map(({ user }) => user);
+
+      if (users.length === 0) {
+        await sendMessageWithRetryAndDelay({
+          bot: bot,
+          chatId: message.chat.id,
+          message: "No participants yet!",
+          options: {
+            parse_mode: "Markdown",
+            disable_notification: true,
+          },
+        });
+
+        return;
+      }
+
       await sendMessageWithRetryAndDelay({
         bot: bot,
         chatId: message.chat.id,
-        message: `The luck is over! [${todaysLucky.winner.name}](tg://user?id=${todaysLucky.winner.id}) got it all!`,
+        message: `👥 Found ${users.length} participants in the game!`,
         options: {
           parse_mode: "Markdown",
           disable_notification: true,
         },
       });
-      return;
-    }
 
-    const users = (
+      const participantsList = ["*Participants:*"].concat(
+        users.map(
+          (user) =>
+            `• [${user.name}](tg://user?id=${user.id}) - ${user.points} points`
+        )
+      );
+
+      await sendMessageWithRetryAndDelay({
+        bot: bot,
+        chatId: message.chat.id,
+        message: participantsList.join("\n"),
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+
+      const today = new Date();
+      const game = getTodaysGame(today);
+
+      const randomUser = await game.playFn({
+        bot,
+        users,
+        chatId: message.chat.id,
+      });
+
+      await sendMessageWithRetryAndDelay({
+        bot: bot,
+        chatId: message.chat.id,
+        message: "📊 Updating points...",
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+
       await client
         .db(message.chat.id.toString())
         .collection("participants")
-        .find({})
-        .toArray()
-    )
-      .map((user, _index, array) => ({
-        user,
-        value: crypto.randomInt(0, array.length * 64),
-      }))
-      .sort((a, b) => a.value - b.value)
-      .map(({ user }) => user);
+        .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
 
-    if (users.length === 0) {
+      await client
+        .db(message.chat.id.toString())
+        .collection("results")
+        .insertOne({
+          date: getTodayDate(),
+          winner: randomUser,
+        });
+
+      const goatUser = await client
+        .db(message.chat.id.toString())
+        .collection("participants")
+        .findOne({}, { sort: { points: "desc" } });
+
+      if (goatUser.id === randomUser.id) {
+        await sendMessageWithRetryAndDelay({
+          bot: bot,
+          chatId: message.chat.id,
+          message: "🎉 We have a GOAT winner!",
+          options: {
+            parse_mode: "Markdown",
+            disable_notification: true,
+          },
+        });
+        await sendVideoWithRetryAndDelay({
+          bot: bot,
+          chatId: message.chat.id,
+          videoPath: path.resolve(__dirname, "assets", "goat.mp4"),
+          options: {
+            caption: `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today! 🐐🐐🐐`,
+            parse_mode: "Markdown",
+            disable_notification: true,
+          },
+        });
+      } else {
+        await sendMessageWithRetryAndDelay({
+          bot: bot,
+          chatId: message.chat.id,
+          message: `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today!`,
+          options: {
+            parse_mode: "Markdown",
+            disable_notification: true,
+          },
+        });
+      }
+
       await sendMessageWithRetryAndDelay({
         bot: bot,
         chatId: message.chat.id,
-        message: "No participants yet!",
+        message: `📈 [${randomUser.name}](tg://user?id=${
+          randomUser.id
+        }) now has ${randomUser.points + 1} points!`,
         options: {
           parse_mode: "Markdown",
           disable_notification: true,
         },
       });
-
-      return;
+    } catch (error) {
+      await sendMessageWithRetryAndDelay({
+        bot: bot,
+        chatId: message.chat.id,
+        message: `❌ Something went wrong... ${String(error)}`,
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+    } finally {
+      await client.close();
     }
-
-    await sendMessageWithRetryAndDelay({
-      bot: bot,
-      chatId: message.chat.id,
-      message: `👥 Found ${users.length} participants in the game!`,
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-
-    const participantsList = ["*Participants:*"].concat(
-      users.map(
-        (user) =>
-          `• [${user.name}](tg://user?id=${user.id}) - ${user.points} points`
-      )
-    );
-
-    await sendMessageWithRetryAndDelay({
-      bot: bot,
-      chatId: message.chat.id,
-      message: participantsList.join("\n"),
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-
-    const today = new Date();
-    const game = getTodaysGame(today);
-
-    const randomUser = await game.playFn({
-      bot,
-      users,
-      chatId: message.chat.id,
-    });
-
-    await sendMessageWithRetryAndDelay({
-      bot: bot,
-      chatId: message.chat.id,
-      message: "📊 Updating points...",
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-
-    await client
-      .db(message.chat.id.toString())
-      .collection("participants")
-      .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
-
-    await client
-      .db(message.chat.id.toString())
-      .collection("results")
-      .insertOne({
-        date: getTodayDate(),
-        winner: randomUser,
-      });
-
-    const goatUser = await client
-      .db(message.chat.id.toString())
-      .collection("participants")
-      .findOne({}, { sort: { points: "desc" } });
-
-    if (goatUser.id === randomUser.id) {
-      await sendMessageWithRetryAndDelay({
-        bot: bot,
-        chatId: message.chat.id,
-        message: "🎉 We have a GOAT winner!",
-        options: {
-          parse_mode: "Markdown",
-          disable_notification: true,
-        },
-      });
-      await sendVideoWithRetryAndDelay({
-        bot: bot,
-        chatId: message.chat.id,
-        videoPath: path.resolve(__dirname, "assets", "goat.mp4"),
-        options: {
-          caption: `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today! 🐐🐐🐐`,
-          parse_mode: "Markdown",
-          disable_notification: true,
-        },
-      });
-    } else {
-      await sendMessageWithRetryAndDelay({
-        bot: bot,
-        chatId: message.chat.id,
-        message: `Luck is on [${randomUser.name}](tg://user?id=${randomUser.id})'s side today!`,
-        options: {
-          parse_mode: "Markdown",
-          disable_notification: true,
-        },
-      });
-    }
-
-    await sendMessageWithRetryAndDelay({
-      bot: bot,
-      chatId: message.chat.id,
-      message: `📈 [${randomUser.name}](tg://user?id=${
-        randomUser.id
-      }) now has ${randomUser.points + 1} points!`,
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-  } catch (error) {
-    await sendMessageWithRetryAndDelay({
-      bot: bot,
-      chatId: message.chat.id,
-      message: `❌ Something went wrong... ${String(error)}`,
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-  } finally {
-    await client.close();
-  }
+  });
 });
 
 bot.onText(/^\/top/, async (message) => {
-  if (!isMessageFromPerson(message)) return;
+  executeCommand(message, async () => {
+    if (!isMessageFromPerson(message)) return;
 
-  try {
-    await client.connect();
+    try {
+      await client.connect();
 
-    const users = await client
-      .db(message.chat.id.toString())
-      .collection("participants")
-      .find({}, { sort: { points: "desc" } })
-      .toArray();
+      const users = await client
+        .db(message.chat.id.toString())
+        .collection("participants")
+        .find({}, { sort: { points: "desc" } })
+        .toArray();
 
-    if (users.length === 0) {
+      if (users.length === 0) {
+        await sendMessageWithRetryAndDelay({
+          bot: bot,
+          chatId: message.chat.id,
+          message: "No participants yet!",
+          options: {
+            parse_mode: "Markdown",
+            disable_notification: true,
+          },
+        });
+        return;
+      }
+
+      const messages = ["*Ranking:*"].concat(
+        users.map(
+          (user, index) =>
+            `${index + 1}. [${user.name}](tg://user?id=${user.id}) - ${
+              user.points
+            } points`
+        )
+      );
+
       await sendMessageWithRetryAndDelay({
         bot: bot,
         chatId: message.chat.id,
-        message: "No participants yet!",
+        message: messages.join("\n"),
         options: {
           parse_mode: "Markdown",
           disable_notification: true,
         },
       });
-      return;
+    } catch (error) {
+      await sendMessageWithRetryAndDelay({
+        bot: bot,
+        chatId: message.chat.id,
+        message: `❌ Something went wrong... ${String(error)}`,
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+    } finally {
+      await client.close();
     }
-
-    const messages = ["*Ranking:*"].concat(
-      users.map(
-        (user, index) =>
-          `${index + 1}. [${user.name}](tg://user?id=${user.id}) - ${
-            user.points
-          } points`
-      )
-    );
-
-    await sendMessageWithRetryAndDelay({
-      bot: bot,
-      chatId: message.chat.id,
-      message: messages.join("\n"),
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-  } catch (error) {
-    await sendMessageWithRetryAndDelay({
-      bot: bot,
-      chatId: message.chat.id,
-      message: `❌ Something went wrong... ${String(error)}`,
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-  } finally {
-    await client.close();
-  }
+  });
 });
 
 bot.onText(/^\/ping/, async (message) => {
@@ -407,253 +411,282 @@ bot.onText(/^\/ping/, async (message) => {
 });
 
 bot.onText(/^\/progress/, async (message) => {
-  if (!isMessageFromPerson(message)) return;
+  executeCommand(message, async () => {
+    if (!isMessageFromPerson(message)) return;
 
-  const now = new Date();
-  const startOfYear = new Date(now.getFullYear(), 0, 1); // January 1st of the current year
-  const endOfYear = new Date(now.getFullYear() + 1, 0, 1); // January 1st of the next year
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1); // January 1st of the current year
+    const endOfYear = new Date(now.getFullYear() + 1, 0, 1); // January 1st of the next year
 
-  const totalDays = (endOfYear - startOfYear) / (1000 * 60 * 60 * 24); // Total days in the year
-  const daysPassed = (now - startOfYear) / (1000 * 60 * 60 * 24); // Days passed so far
+    const totalDays = (endOfYear - startOfYear) / (1000 * 60 * 60 * 24); // Total days in the year
+    const daysPassed = (now - startOfYear) / (1000 * 60 * 60 * 24); // Days passed so far
 
-  const progress = ((daysPassed / totalDays) * 100).toFixed(5); // Percentage rounded to 2 decimal places
+    const progress = ((daysPassed / totalDays) * 100).toFixed(5); // Percentage rounded to 2 decimal places
 
-  const diffTime = endOfYear - now;
-  const remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffTime = endOfYear - now;
+    const remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  bot.sendMessage(
-    message.chat.id,
-    `Year Progress: ${progress}%\nDays Left: ${remainingDays}`
-  );
+    await sendMessageWithRetryAndDelay({
+      bot,
+      chatId: message.chat.id,
+      message: `Year Progress: ${progress}%\nDays Left: ${remainingDays}`,
+      options: {
+        parse_mode: "Markdown",
+      },
+    });
+  });
 });
 
 bot.onText(/^\/schedule/, async (message) => {
-  if (!isMessageFromPerson(message)) return;
+  executeCommand(message, async () => {
+    if (!isMessageFromPerson(message)) return;
 
-  try {
-    const today = new Date();
+    try {
+      const today = new Date();
 
-    const schedule = ["*Games Schedule:*"];
+      const schedule = ["*Games Schedule:*"];
 
-    // Show next 7 days
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      const game = getTodaysGame(date);
-      const formattedDate = date.toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
+      // Show next 7 days
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        const game = getTodaysGame(date);
+        const formattedDate = date.toLocaleDateString("en-US", {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+        });
+        schedule.push(`${formattedDate}: ${game.name}`);
+      }
+
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: schedule.join("\n"),
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
       });
-      schedule.push(`${formattedDate}: ${game.name}`);
+    } catch (error) {
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: `❌ Something went wrong... ${String(error)}`,
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
     }
-
-    await sendMessageWithRetryAndDelay({
-      bot,
-      chatId: message.chat.id,
-      message: schedule.join("\n"),
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-  } catch (error) {
-    await sendMessageWithRetryAndDelay({
-      bot,
-      chatId: message.chat.id,
-      message: `❌ Something went wrong... ${String(error)}`,
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-  }
+  });
 });
 
 bot.onText(/^\/missing/, async (message) => {
-  if (!isMessageFromPerson(message)) return;
+  executeCommand(message, async () => {
+    if (!isMessageFromPerson(message)) return;
 
-  try {
-    await client.connect();
+    try {
+      await client.connect();
 
-    const database = client.db(message.chat.id.toString());
-    const resultsCollection = database.collection("results");
-    const missingResults = await findMissingResults(resultsCollection);
+      const database = client.db(message.chat.id.toString());
+      const resultsCollection = database.collection("results");
+      const missingResults = await findMissingResults(resultsCollection);
 
-    if (missingResults.length === 0) {
+      if (missingResults.length === 0) {
+        await sendMessageWithRetryAndDelay({
+          bot,
+          chatId: message.chat.id,
+          message: "No missing results found!",
+          options: {
+            parse_mode: "Markdown",
+            disable_notification: true,
+          },
+        });
+        return;
+      }
+
+      // List all missing dates
       await sendMessageWithRetryAndDelay({
         bot,
         chatId: message.chat.id,
-        message: "No missing results found!",
+        message: `📅 *Missing dates found:*\n${missingResults
+          .map((date) => `• ${date}`)
+          .join("\n")}`,
         options: {
           parse_mode: "Markdown",
           disable_notification: true,
         },
       });
-      return;
-    }
 
-    // List all missing dates
-    await sendMessageWithRetryAndDelay({
-      bot,
-      chatId: message.chat.id,
-      message: `📅 *Missing dates found:*\n${missingResults
-        .map((date) => `• ${date}`)
-        .join("\n")}`,
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-
-    const firstMissingDate = missingResults[0];
-    await sendMessageWithRetryAndDelay({
-      bot,
-      chatId: message.chat.id,
-      message: `🎯 *Selected date for execution:* ${firstMissingDate}`,
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-
-    // Get all participants
-    const users = await database.collection("participants").find({}).toArray();
-
-    if (users.length === 0) {
+      const firstMissingDate = missingResults[0];
       await sendMessageWithRetryAndDelay({
         bot,
         chatId: message.chat.id,
-        message: "No participants found!",
+        message: `🎯 *Selected date for execution:* ${firstMissingDate}`,
         options: {
           parse_mode: "Markdown",
           disable_notification: true,
         },
       });
-      return;
+
+      // Get all participants
+      const users = await database
+        .collection("participants")
+        .find({})
+        .toArray();
+
+      if (users.length === 0) {
+        await sendMessageWithRetryAndDelay({
+          bot,
+          chatId: message.chat.id,
+          message: "No participants found!",
+          options: {
+            parse_mode: "Markdown",
+            disable_notification: true,
+          },
+        });
+        return;
+      }
+
+      // List all participants and their current points
+      const participantsList = ["👥 *Current participants and points:*"].concat(
+        users.map(
+          (user) =>
+            `• [${user.name}](tg://user?id=${user.id}) - ${user.points} points`
+        )
+      );
+
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: participantsList.join("\n"),
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+
+      // Parse the missing date and get the game
+      const [day, month, year] = firstMissingDate.split(".");
+      const gameDate = new Date(year, month - 1, day);
+      const game = getTodaysGame(gameDate);
+
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: `🎮 *Game for ${firstMissingDate}:* ${game.name}`,
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+
+      // Execute the game
+      const randomUser = await game.playFn({
+        bot,
+        users,
+        chatId: message.chat.id,
+      });
+
+      // Update points and save result
+      await database
+        .collection("participants")
+        .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
+
+      await database.collection("results").insertOne({
+        date: firstMissingDate,
+        winner: randomUser,
+      });
+
+      // Announce the winner and their new points
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: `🏆 *Winner:* [${randomUser.name}](tg://user?id=${
+          randomUser.id
+        })\n📈 *New points:* ${randomUser.points + 1}`,
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+
+      // Get updated points for all participants
+      const updatedUsers = await database
+        .collection("participants")
+        .find({}, { sort: { points: "desc" } })
+        .toArray();
+
+      // Show final points table
+      const finalPointsList = ["📊 *Final points after update:*"].concat(
+        updatedUsers.map(
+          (user, index) =>
+            `${index + 1}. [${user.name}](tg://user?id=${user.id}) - ${
+              user.points
+            } points`
+        )
+      );
+
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: finalPointsList.join("\n"),
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+    } catch (error) {
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: `❌ Error: ${error.message}`,
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+    } finally {
+      await client.close();
     }
-
-    // List all participants and their current points
-    const participantsList = ["👥 *Current participants and points:*"].concat(
-      users.map(
-        (user) =>
-          `• [${user.name}](tg://user?id=${user.id}) - ${user.points} points`
-      )
-    );
-
-    await sendMessageWithRetryAndDelay({
-      bot,
-      chatId: message.chat.id,
-      message: participantsList.join("\n"),
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-
-    // Parse the missing date and get the game
-    const [day, month, year] = firstMissingDate.split(".");
-    const gameDate = new Date(year, month - 1, day);
-    const game = getTodaysGame(gameDate);
-
-    await sendMessageWithRetryAndDelay({
-      bot,
-      chatId: message.chat.id,
-      message: `🎮 *Game for ${firstMissingDate}:* ${game.name}`,
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-
-    // Execute the game
-    const randomUser = await game.playFn({
-      bot,
-      users,
-      chatId: message.chat.id,
-    });
-
-    // Update points and save result
-    await database
-      .collection("participants")
-      .updateOne({ id: randomUser.id }, { $inc: { points: 1 } });
-
-    await database.collection("results").insertOne({
-      date: firstMissingDate,
-      winner: randomUser,
-    });
-
-    // Announce the winner and their new points
-    await sendMessageWithRetryAndDelay({
-      bot,
-      chatId: message.chat.id,
-      message: `🏆 *Winner:* [${randomUser.name}](tg://user?id=${
-        randomUser.id
-      })\n📈 *New points:* ${randomUser.points + 1}`,
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-
-    // Get updated points for all participants
-    const updatedUsers = await database
-      .collection("participants")
-      .find({}, { sort: { points: "desc" } })
-      .toArray();
-
-    // Show final points table
-    const finalPointsList = ["📊 *Final points after update:*"].concat(
-      updatedUsers.map(
-        (user, index) =>
-          `${index + 1}. [${user.name}](tg://user?id=${user.id}) - ${
-            user.points
-          } points`
-      )
-    );
-
-    await sendMessageWithRetryAndDelay({
-      bot,
-      chatId: message.chat.id,
-      message: finalPointsList.join("\n"),
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-  } catch (error) {
-    await sendMessageWithRetryAndDelay({
-      bot,
-      chatId: message.chat.id,
-      message: `❌ Error: ${error.message}`,
-      options: {
-        parse_mode: "Markdown",
-        disable_notification: true,
-      },
-    });
-  } finally {
-    await client.close();
-  }
+  });
 });
 
 bot.onText(/^\/steal/, async (message) => {
-  if (!isMessageFromPerson(message)) return;
+  executeCommand(message, async () => {
+    if (!isMessageFromPerson(message)) return;
 
-  try {
-    await client.connect();
+    try {
+      await client.connect();
 
-    const database = client.db(message.chat.id.toString());
-    const resultsCollection = database.collection("results");
-    const winnerDates = await findWinnerDates(resultsCollection);
+      const database = client.db(message.chat.id.toString());
+      const resultsCollection = database.collection("results");
+      const winnerDates = await findWinnerDates(resultsCollection);
 
-    await sendMessageWithRetryAndDelay({
-      bot,
-      chatId: message.chat.id,
-      message: `🏆 *Winner dates:*\n${winnerDates
-        .map((result) => `• ${result.date} - ${result.winner.name}`)
-        .join("\n")}`,
-    });
-  } catch (error) {}
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: `🏆 *Winner dates:*\n${winnerDates
+          .map((result) => `• ${result.date} - ${result.winner.name}`)
+          .join("\n")}`,
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+    } catch (error) {
+      await sendMessageWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        message: `❌ Error: ${error.message}`,
+        options: {
+          parse_mode: "Markdown",
+          disable_notification: true,
+        },
+      });
+    }
+  });
 });
 
 bot.setMyCommands([
