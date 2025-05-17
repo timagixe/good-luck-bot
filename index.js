@@ -11,6 +11,7 @@ import {
   sendMessageWithRetryAndDelay,
   sendVideoWithRetryAndDelay,
   shuffleUsers,
+  sendAudioWithRetryAndDelay,
 } from "./utils.js";
 import { getTodaysGame } from "./games.js";
 import { findMissingResults } from "./find-missing-results.js";
@@ -420,6 +421,20 @@ bot.onText(/^\/progress/, async (message) => {
 
     const diffTime = endOfYear - now;
     const remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    // Check if it's Friday (5 is Friday in getDay())
+    if (now.getDay() === 5) {
+      await sendAudioWithRetryAndDelay({
+        bot,
+        chatId: message.chat.id,
+        audioPath: path.resolve(__dirname, "assets", "friday_again.ogg"),
+        options: {
+          caption: `Year Progress: ${progress}%\nDays Left: ${remainingDays}`,
+          parse_mode: "Markdown",
+        },
+      });
+      return;
+    }
 
     await sendMessageWithRetryAndDelay({
       bot,
