@@ -41,6 +41,16 @@ export async function sendDiceWithRetryAndDelay({bot, chatId, options}) {
   return withRetry(() => bot.sendDice(chatId, options));
 }
 
+export async function sendAudioWithRetryAndDelay({
+  bot,
+  chatId,
+  audioPath,
+  options,
+}) {
+  await wait();
+  return withRetry(() => bot.sendAudio(chatId, audioPath, options));
+}
+
 /**
  * Shuffles an array of users using crypto.randomInt for randomization
  * @param {Array} users - Array of user objects to shuffle
